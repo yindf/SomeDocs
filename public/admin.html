@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理员控制台</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+    }
+
+    .admin-nav {
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    .admin-nav button {
+      margin-right: 10px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background: #f8f9fa;
+      transition: background 0.3s;
+    }
+
+    .admin-nav button.active {
+      background: #007bff;
+      color: white;
+    }
+
+    .admin-nav button:hover {
+      background: #0056b3;
+      color: white;
+    }
+
+    .admin-section {
+      display: none;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .admin-section.active {
+      display: block;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .stat-card h3 {
+      margin: 0 0 10px 0;
+      font-size: 2.5rem;
+    }
+
+    .stat-card p {
+      margin: 0;
+      opacity: 0.9;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .data-table th {
+      background: #f8f9fa;
+      font-weight: bold;
+    }
+
+    .data-table tr:hover {
+      background: #f8f9fa;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .form-inline {
+      display: flex;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .form-inline .form-group {
+      flex: 1;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.3s;
+    }
+
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0056b3;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #1e7e34;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c82333;
+    }
+
+    .btn-warning {
+      background: #ffc107;
+      color: #212529;
+    }
+
+    .btn-warning:hover {
+      background: #e0a800;
+    }
+
+    .status-badge {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .status-normal {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-expiring {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status-expired {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status-permanent {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .pagination {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .pagination button {
+      margin: 0 5px;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      background: white;
+      cursor: pointer;
+    }
+
+    .pagination button.active {
+      background: #007bff;
+      color: white;
+      border-color: #007bff;
+    }
+
+    .industry-tag {
+      display: inline-block;
+      background: #e9ecef;
+      color: #495057;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      margin-right: 5px;
+    }
+
+    .validity-tag {
+      display: inline-block;
+      background: #fff3cd;
+      color: #856404;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 5px;
+    }
+
+    .action-buttons .btn {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: none;
+      width: 80%;
+      max-width: 500px;
+      border-radius: 10px;
+    }
+
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .close:hover {
+      color: black;
+    }
+
+    /* 数据导入样式 */
+    .import-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .import-types {
+      display: flex;
+      gap: 20px;
+      margin: 10px 0;
+    }
+
+    .import-type-option {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 10px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+
+    .import-type-option:hover {
+      border-color: #007bff;
+      background-color: #f8f9fa;
+    }
+
+    .import-type-option input[type="radio"] {
+      margin-right: 8px;
+    }
+
+    .import-type-option input[type="radio"]:checked + span {
+      font-weight: bold;
+      color: #007bff;
+    }
+
+    .template-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .file-upload-area {
+      border: 2px dashed #007bff;
+      border-radius: 10px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background-color: #f8f9fa;
+    }
+
+    .file-upload-area:hover {
+      border-color: #0056b3;
+      background-color: #e3f2fd;
+    }
+
+    .file-upload-area.dragover {
+      border-color: #28a745;
+      background-color: #d4edda;
+    }
+
+    .file-upload-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+      color: #007bff;
+    }
+
+    .file-upload-text p {
+      margin: 5px 0;
+      font-size: 16px;
+      color: #333;
+    }
+
+    .file-upload-hint {
+      font-size: 14px !important;
+      color: #6c757d !important;
+    }
+
+    .selected-file {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px;
+      background-color: #e8f5e8;
+      border: 1px solid #28a745;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .file-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .file-name {
+      font-weight: bold;
+      color: #333;
+    }
+
+    .file-size {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .import-options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .import-options label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .import-options input[type="checkbox"] {
+      margin-right: 8px;
+    }
+
+    .import-progress {
+      margin-top: 20px;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background-color: #e9ecef;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #007bff, #0056b3);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      text-align: center;
+      font-weight: bold;
+      color: #495057;
+    }
+
+    .import-result {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+    }
+
+    .import-result.success {
+      background-color: #d4edda;
+      border-color: #c3e6cb;
+      color: #155724;
+    }
+
+    .import-result.error {
+      background-color: #f8d7da;
+      border-color: #f5c6cb;
+      color: #721c24;
+    }
+
+    .result-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 15px 0;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 10px;
+      background-color: rgba(255, 255, 255, 0.3);
+      border-radius: 6px;
+    }
+
+    .stat-number {
+      font-size: 24px;
+      font-weight: bold;
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    /* 补充导入结果样式 */
+    .result-success,
+    .result-error {
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+
+    .result-success {
+      background-color: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+
+    .result-error {
+      background-color: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+
+    .result-success h4,
+    .result-error h4 {
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+
+    .result-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 15px 0;
+    }
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background-color: rgba(255, 255, 255, 0.7);
+      border-radius: 6px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-label {
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-weight: bold;
+      font-size: 18px;
+      color: #007bff;
+    }
+
+    .result-errors {
+      margin-top: 15px;
+      padding: 15px;
+      background-color: rgba(220, 53, 69, 0.1);
+      border-radius: 6px;
+      border: 1px solid #f5c6cb;
+    }
+
+    .result-errors h5 {
+      margin-bottom: 10px;
+      color: #721c24;
+      font-size: 16px;
+    }
+
+    .result-errors ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .result-errors li {
+      margin-bottom: 8px;
+      color: #721c24;
+      font-size: 14px;
+    }
+
+    .error-message {
+      font-size: 16px;
+      margin-bottom: 15px;
+      font-weight: bold;
+      line-height: 1.4;
+    }
+
+    .error-tips {
+      margin-top: 15px;
+      padding: 15px;
+      background-color: rgba(255, 193, 7, 0.1);
+      border-radius: 6px;
+      border: 1px solid #ffc107;
+    }
+
+    .error-tips h5 {
+      margin-bottom: 10px;
+      color: #856404;
+      font-size: 16px;
+    }
+
+    .error-tips ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .error-tips li {
+      margin-bottom: 8px;
+      color: #856404;
+      font-size: 14px;
+    }
+
+    .btn-lg {
+      padding: 12px 30px;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 8px;
+    }
+
+    /* 复选框样式优化 */
+    .checkbox-group {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 8px;
+      background-color: #fafafa;
+    }
+
+    .checkbox-group label {
+      display: block;
+      margin: 8px 0;
+      font-weight: normal;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+    }
+
+    .checkbox-group label:hover {
+      background-color: #f0f0f0;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      margin-right: 10px;
+      transform: scale(1.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <div class="admin-nav">
+      <h1>管理员控制台</h1>
+      <button onclick="showSection('stats')" class="nav-btn active">系统统计</button>
+      <button onclick="showSection('invites')" class="nav-btn">邀请码管理</button>
+      <button onclick="showSection('users')" class="nav-btn">用户管理</button>
+      <button onclick="showSection('import')" class="nav-btn">数据导入</button>
+      <button onclick="logout()" class="btn btn-danger" style="float: right;">退出登录</button>
+    </div>
+
+    <!-- 系统统计 -->
+    <div id="stats-section" class="admin-section active">
+      <h2>系统统计</h2>
+      <div id="stats-content">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h3 id="total-users">-</h3>
+            <p>总用户数</p>
+          </div>
+          <div class="stat-card">
+            <h3 id="total-invites">-</h3>
+            <p>总激活码数</p>
+          </div>
+          <div class="stat-card">
+            <h3 id="unused-invites">-</h3>
+            <p>未使用激活码</p>
+          </div>
+          <div class="stat-card">
+            <h3 id="total-investments">-</h3>
+            <p>投资数据条目</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 邀请码管理 -->
+    <div id="invites-section" class="admin-section">
+      <h2>邀请码管理</h2>
+      
+      <!-- 创建邀请码表单 -->
+      <div class="form-inline">
+        <div class="form-group">
+          <label>行业</label>
+          <select id="invite-industry">
+            <option value="">选择行业</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>有效期</label>
+          <select id="invite-validity">
+            <option value="6">6个月</option>
+            <option value="12" selected>12个月</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>数量</label>
+          <input type="number" id="invite-count" value="1" min="1" max="50">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button onclick="createInviteCodes()" class="btn btn-primary">创建激活码</button>
+        </div>
+      </div>
+
+      <!-- 筛选器 -->
+      <div class="form-inline" style="margin-top: 20px;">
+        <div class="form-group">
+          <label>筛选行业</label>
+          <select id="filter-industry" onchange="loadInviteCodes()">
+            <option value="">全部行业</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 邀请码列表 -->
+      <table class="data-table" id="invites-table">
+        <thead>
+          <tr>
+            <th>激活码</th>
+            <th>行业</th>
+            <th>有效期</th>
+            <th>状态</th>
+            <th>使用者</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="invites-tbody">
+        </tbody>
+      </table>
+      <div class="pagination" id="invites-pagination"></div>
+    </div>
+
+    <!-- 用户管理 -->
+    <div id="users-section" class="admin-section">
+      <h2>用户管理</h2>
+      
+      <table class="data-table" id="users-table">
+        <thead>
+          <tr>
+            <th>用户名</th>
+            <th>邮箱</th>
+            <th>角色</th>
+            <th>行业权限</th>
+            <th>过期时间</th>
+            <th>剩余天数</th>
+            <th>状态</th>
+            <th>注册时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody">
+        </tbody>
+      </table>
+      <div class="pagination" id="users-pagination"></div>
+    </div>
+  </div>
+
+  <!-- 编辑激活码模态框 -->
+  <div id="edit-invite-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('edit-invite-modal')">&times;</span>
+      <h2>编辑激活码</h2>
+      <form id="edit-invite-form">
+        <div class="form-group">
+          <label>激活码</label>
+          <input type="text" id="edit-invite-code" readonly>
+        </div>
+        <div class="form-group">
+          <label>行业</label>
+          <select id="edit-invite-industry">
+          </select>
+        </div>
+        <div class="form-group">
+          <label>有效期</label>
+          <select id="edit-invite-validity">
+            <option value="6">6个月</option>
+            <option value="12">12个月</option>
+          </select>
+        </div>
+        <button type="button" onclick="updateInviteCode()" class="btn btn-primary">保存更改</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 编辑用户模态框 -->
+  <div id="edit-user-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('edit-user-modal')">&times;</span>
+      <h2>编辑用户</h2>
+      <form id="edit-user-form">
+        <div class="form-group">
+          <label>用户名</label>
+          <input type="text" id="edit-user-name" readonly>
+        </div>
+        <div class="form-group">
+          <label>行业权限（可多选）</label>
+          <div id="edit-user-industry" class="checkbox-group" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+            <!-- 行业复选框将在这里动态生成 -->
+          </div>
+        </div>
+        <div class="form-group">
+          <label>延长使用时限</label>
+          <select id="edit-user-expire">
+            <option value="6">延长6个月</option>
+            <option value="12">延长12个月</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button type="button" onclick="updateUserIndustry()" class="btn btn-primary">更新行业权限</button>
+          <button type="button" onclick="updateUserExpire()" class="btn btn-success">延长使用时限</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 数据导入 -->
+  <div id="import-section" class="admin-section">
+    <h2>数据导入</h2>
+    
+    <div class="import-container">
+      <!-- 导入类型选择 -->
+      <div class="form-group">
+        <label>选择导入类型</label>
+        <div class="import-types">
+          <label class="import-type-option">
+            <input type="radio" name="importType" value="investments" checked>
+            <span>投资数据</span>
+          </label>
+          <label class="import-type-option">
+            <input type="radio" name="importType" value="users">
+            <span>用户数据</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 模板下载 -->
+      <div class="form-group">
+        <label>下载模板文件</label>
+        <div class="template-buttons">
+          <button type="button" onclick="downloadTemplate('investments')" class="btn btn-info">
+            📊 下载投资数据模板
+          </button>
+          <button type="button" onclick="downloadTemplate('users')" class="btn btn-info">
+            👥 下载用户数据模板
+          </button>
+        </div>
+      </div>
+
+      <!-- 文件上传 -->
+      <div class="form-group">
+        <label>选择Excel文件</label>
+        <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('excelFile').click()">
+          <div class="file-upload-content">
+            <div class="file-upload-icon">📁</div>
+            <div class="file-upload-text">
+              <p>点击选择Excel文件</p>
+              <p class="file-upload-hint">支持.xlsx, .xls格式，最大10MB</p>
+            </div>
+          </div>
+          <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;" onchange="handleFileSelect(event)">
+        </div>
+        
+        <div id="selectedFile" class="selected-file" style="display: none;">
+          <div class="file-info">
+            <span class="file-name" id="fileName"></span>
+            <span class="file-size" id="fileSize"></span>
+          </div>
+          <button type="button" onclick="clearFile()" class="btn btn-sm btn-danger">移除</button>
+        </div>
+      </div>
+
+      <!-- 导入选项 -->
+      <div class="form-group">
+        <label>导入选项</label>
+        <div class="import-options">
+          <label>
+            <input type="checkbox" id="skipDuplicates" checked>
+            跳过重复数据
+          </label>
+          <label>
+            <input type="checkbox" id="validateData" checked>
+            数据验证
+          </label>
+        </div>
+      </div>
+
+      <!-- 导入按钮 -->
+      <div class="form-group">
+        <button type="button" onclick="startImport()" class="btn btn-primary btn-lg" id="importBtn" disabled>
+          🚀 开始导入
+        </button>
+      </div>
+
+      <!-- 导入进度 -->
+      <div id="importProgress" class="import-progress" style="display: none;">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">准备中...</div>
+      </div>
+
+      <!-- 导入结果 -->
+      <div id="importResult" class="import-result" style="display: none;">
+        <h3>导入结果</h3>
+        <div id="resultContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let currentInviteId = null;
+    let currentUserId = null;
+    let currentInvitePage = 1;
+    let currentUserPage = 1;
+
+    // 检查管理员权限
+    async function checkAdminAuth() {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        console.log('未找到token，重定向到首页');
+        alert('请先登录');
+        window.location.href = '/';
+        return false;
+      }
+
+      console.log('管理员控制台访问授权：token已验证通过');
+      return true;
+    }
+
+    // 显示指定部分
+    function showSection(section) {
+      // 隐藏所有部分
+      document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+      // 显示选定部分
+      document.getElementById(section + '-section').classList.add('active');
+      event.target.classList.add('active');
+
+      // 加载对应数据
+      switch(section) {
+        case 'stats':
+          loadStats();
+          break;
+        case 'invites':
+          loadInviteCodes();
+          loadIndustries();
+          break;
+        case 'users':
+          loadUsers();
+          break;
+      }
+    }
+
+    // 加载系统统计
+    async function loadStats() {
+      try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch('/api/admin/stats', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('加载统计数据失败');
+
+        const stats = await response.json();
+
+        document.getElementById('total-users').textContent = stats.totalUsers;
+        document.getElementById('total-invites').textContent = stats.totalInvites;
+        document.getElementById('unused-invites').textContent = stats.unusedInvites;
+        document.getElementById('total-investments').textContent = stats.totalInvestments;
+
+      } catch (error) {
+        console.error('加载统计数据失败:', error);
+        alert('加载统计数据失败');
+      }
+    }
+
+    // 加载行业列表
+    async function loadIndustries() {
+      try {
+        console.log('🔍 开始加载行业列表...');
+        const token = localStorage.getItem('authToken');
+        const response = await fetch('/api/admin/industries', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        console.log('🔍 行业API响应状态:', response.status, response.statusText);
+
+        if (!response.ok) throw new Error('加载行业列表失败');
+
+        const industries = await response.json();
+        console.log('🔍 获取到的行业列表:', industries);
+        console.log('🔍 行业列表类型:', typeof industries, '是否为数组:', Array.isArray(industries));
+
+        // 更新常规的下拉选择器
+        const regularSelectors = [
+          'invite-industry', 'filter-industry', 'edit-invite-industry'
+        ];
+
+        regularSelectors.forEach(id => {
+          const select = document.getElementById(id);
+          console.log(`🔍 处理选择器 ${id}:`, !!select);
+          if (select) {
+            // 保留第一个选项（通常是"选择行业"或"全部行业"）
+            const firstOption = select.options[0];
+            select.innerHTML = '';
+            if (firstOption) select.appendChild(firstOption);
+
+            if (Array.isArray(industries)) {
+              industries.forEach(industry => {
+                const option = document.createElement('option');
+                option.value = industry;
+                option.textContent = industry === 'all' ? '全部行业' : industry;
+                select.appendChild(option);
+              });
+              console.log(`✅ ${id} 添加了 ${industries.length} 个行业选项`);
+            } else {
+              console.error(`❌ ${id} 行业数据不是数组:`, industries);
+            }
+          }
+        });
+
+        // 特殊处理编辑用户界面的多选行业复选框
+        const editUserIndustryContainer = document.getElementById('edit-user-industry');
+        if (editUserIndustryContainer && editUserIndustryContainer.classList.contains('checkbox-group')) {
+          console.log('🔍 更新编辑用户界面的行业复选框...');
+          editUserIndustryContainer.innerHTML = '';
+          
+          if (Array.isArray(industries)) {
+            industries.forEach((industry, index) => {
+              const checkboxWrapper = document.createElement('div');
+              checkboxWrapper.style.marginBottom = '8px';
+              
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.id = `industry-${index}`;
+              checkbox.value = industry;
+              checkbox.name = 'user-industries';
+              
+              const label = document.createElement('label');
+              label.htmlFor = `industry-${index}`;
+              label.textContent = industry === 'all' ? '全部行业' : industry;
+              label.style.marginLeft = '8px';
+              label.style.cursor = 'pointer';
+              
+              checkboxWrapper.appendChild(checkbox);
+              checkboxWrapper.appendChild(label);
+              editUserIndustryContainer.appendChild(checkboxWrapper);
+            });
+            console.log('✅ 编辑用户界面行业复选框已更新:', industries.length, '个选项');
+          } else {
+            console.error('❌ 编辑用户界面行业数据不是数组:', industries);
+          }
+        }
+
+      } catch (error) {
+        console.error('❌ 加载行业列表失败:', error);
+      }
+    }
+
+    // 创建激活码
+    async function createInviteCodes() {
+      const industry = document.getElementById('invite-industry').value;
+      const validity = document.getElementById('invite-validity').value;
+      const count = document.getElementById('invite-count').value;
+
+      if (!industry) {
+        alert('请选择行业');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch('/api/admin/invite-codes', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            industry,
+            validity_months: parseInt(validity),
+            count: parseInt(count)
+          })
+        });
+
+        if (!response.ok) throw new Error('创建激活码失败');
+
+        const result = await response.json();
+        alert(`成功创建 ${count} 个激活码`);
+        
+        // 重新加载激活码列表
+        loadInviteCodes();
+
+      } catch (error) {
+        console.error('创建激活码失败:', error);
+        alert('创建激活码失败');
+      }
+    }
+
+    // 加载激活码列表
+    async function loadInviteCodes(page = 1) {
+      currentInvitePage = page;
+      const industry = document.getElementById('filter-industry')?.value || '';
+
+      try {
+        const token = localStorage.getItem('authToken');
+        const url = `/api/admin/invite-codes?page=${page}${industry ? `&industry=${industry}` : ''}`;
+        
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('加载激活码列表失败');
+
+        const result = await response.json();
+
+        // 渲染激活码表格
+        const tbody = document.getElementById('invites-tbody');
+        tbody.innerHTML = '';
+
+        result.data.forEach(invite => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td><code>${invite.code}</code></td>
+            <td><span class="industry-tag">${invite.industry === 'all' ? '全部行业' : invite.industry}</span></td>
+            <td><span class="validity-tag">${invite.validity_months || 12}个月</span></td>
+            <td>${invite.is_used ? '<span class="status-badge status-expired">已使用</span>' : '<span class="status-badge status-normal">未使用</span>'}</td>
+            <td>${invite.used_by_username || '-'}</td>
+            <td>${new Date(invite.created_at).toLocaleDateString('zh-CN')}</td>
+            <td>
+              <div class="action-buttons">
+                ${!invite.is_used ? `<button onclick="editInvite(${invite.id}, '${invite.code}', '${invite.industry}', ${invite.validity_months || 12})" class="btn btn-warning">编辑</button>` : ''}
+                <button onclick="deleteInvite(${invite.id})" class="btn btn-danger">删除</button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        // 渲染分页
+        renderPagination('invites-pagination', result.page, result.totalPages, loadInviteCodes);
+
+      } catch (error) {
+        console.error('加载激活码列表失败:', error);
+        alert('加载激活码列表失败');
+      }
+    }
+
+    // 加载用户列表
+    async function loadUsers(page = 1) {
+      currentUserPage = page;
+
+      try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`/api/admin/users?page=${page}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('加载用户列表失败');
+
+        const result = await response.json();
+
+        // 渲染用户表格
+        const tbody = document.getElementById('users-tbody');
+        tbody.innerHTML = '';
+
+        result.data.forEach(user => {
+          const row = document.createElement('tr');
+          
+          let statusBadge = '';
+          if (user.status === '正常') {
+            statusBadge = `<span class="status-badge status-normal">${user.status}</span>`;
+          } else if (user.status === '今日到期') {
+            statusBadge = `<span class="status-badge status-expiring">${user.status}</span>`;
+          } else if (user.status === '已过期') {
+            statusBadge = `<span class="status-badge status-expired">${user.status}</span>`;
+          } else {
+            statusBadge = `<span class="status-badge status-permanent">${user.status}</span>`;
+          }
+
+          row.innerHTML = `
+            <td>${user.username}</td>
+            <td>${user.email}</td>
+            <td>${user.role === 'admin' ? '管理员' : '普通用户'}</td>
+            <td><span class="industry-tag">${user.industry === 'all' ? '全部行业' : user.industry}</span></td>
+            <td>${user.expire_date_formatted}</td>
+            <td>${user.days_remaining !== null ? (user.days_remaining >= 0 ? user.days_remaining + '天' : '已过期') : '永久'}</td>
+            <td>${statusBadge}</td>
+            <td>${new Date(user.created_at).toLocaleDateString('zh-CN')}</td>
+            <td>
+              <div class="action-buttons">
+                ${user.role !== 'admin' ? `<button onclick="editUser(${user.id}, '${user.username}', '${user.industry}')" class="btn btn-warning">编辑</button>` : ''}
+              </div>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        // 渲染分页
+        renderPagination('users-pagination', result.page, result.totalPages, loadUsers);
+
+      } catch (error) {
+        console.error('加载用户列表失败:', error);
+        alert('加载用户列表失败');
+      }
+    }
+
+    // 编辑激活码
+    function editInvite(id, code, industry, validity) {
+      currentInviteId = id;
+      document.getElementById('edit-invite-code').value = code;
+      document.getElementById('edit-invite-industry').value = industry;
+      document.getElementById('edit-invite-validity').value = validity;
+      document.getElementById('edit-invite-modal').style.display = 'block';
+    }
+
+    // 更新激活码
+    async function updateInviteCode() {
+      const industry = document.getElementById('edit-invite-industry').value;
+      const validity = document.getElementById('edit-invite-validity').value;
+
+      try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`/api/admin/invite-codes/${currentInviteId}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            industry,
+            validity_months: parseInt(validity)
+          })
+        });
+
+        if (!response.ok) throw new Error('更新激活码失败');
+
+        alert('激活码更新成功');
+        closeModal('edit-invite-modal');
+        loadInviteCodes(currentInvitePage);
+
+      } catch (error) {
+        console.error('更新激活码失败:', error);
+        alert('更新激活码失败');
+      }
+    }
+
+    // 删除激活码
+    async function deleteInvite(id) {
+      if (!confirm('确定要删除这个激活码吗？')) return;
+
+      try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`/api/admin/invite-codes/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('删除激活码失败');
+
+        alert('激活码删除成功');
+        loadInviteCodes(currentInvitePage);
+
+      } catch (error) {
+        console.error('删除激活码失败:', error);
+        alert('删除激活码失败');
+      }
+    }
+
+    // 编辑用户
+    function editUser(id, username, industry) {
+      currentUserId = id;
+      document.getElementById('edit-user-name').value = username;
+      
+      console.log('🔍 编辑用户:', {id, username, industry});
+      
+      // 处理多行业权限显示
+      const editUserIndustryContainer = document.getElementById('edit-user-industry');
+      if (editUserIndustryContainer && editUserIndustryContainer.classList.contains('checkbox-group')) {
+        // 先清除所有选择
+        const checkboxes = editUserIndustryContainer.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => checkbox.checked = false);
+        
+        // 解析用户的行业权限（支持逗号分隔的多个行业）
+        if (industry) {
+          const userIndustries = industry.split(',').map(ind => ind.trim()).filter(Boolean);
+          console.log('🔍 用户当前行业权限:', userIndustries);
+          
+          // 选中对应的复选框
+          checkboxes.forEach(checkbox => {
+            if (userIndustries.includes(checkbox.value)) {
+              checkbox.checked = true;
+              console.log('✅ 选中行业:', checkbox.value);
+            }
+          });
+        }
+      } else {
+        // 兼容旧版单选模式（如果没有复选框容器）
+        const singleSelect = document.getElementById('edit-user-industry');
+        if (singleSelect && singleSelect.tagName === 'SELECT') {
+          singleSelect.value = industry;
+        }
+      }
+      
+      document.getElementById('edit-user-modal').style.display = 'block';
+    }
+
+    // 更新用户行业
+    async function updateUserIndustry() {
+      let industries = [];
+      
+      const editUserIndustryContainer = document.getElementById('edit-user-industry');
+      
+      // 检查是否为多选复选框模式
+      if (editUserIndustryContainer && editUserIndustryContainer.classList.contains('checkbox-group')) {
+        // 多选模式：获取所有选中的复选框
+        const checkedBoxes = editUserIndustryContainer.querySelectorAll('input[type="checkbox"]:checked');
+        industries = Array.from(checkedBoxes).map(checkbox => checkbox.value);
+        
+        console.log('🔍 选中的行业:', industries);
+        
+        if (industries.length === 0) {
+          alert('请至少选择一个行业权限');
+          return;
+        }
+      } else {
+        // 兼容单选模式
+        const singleSelect = document.getElementById('edit-user-industry');
+        if (singleSelect && singleSelect.tagName === 'SELECT') {
+          industries = [singleSelect.value];
+        } else {
+          alert('无法获取行业选择信息');
+          return;
+        }
+      }
+
+      try {
+        const token = localStorage.getItem('authToken');
+        
+        // 发送到后端，使用新的多行业格式
+        const payload = {
+          industries: industries, // 发送数组格式
+          industry: industries.join(',') // 兼容旧格式
+        };
+        
+        console.log('🔍 发送更新请求:', payload);
+        
+        const response = await fetch(`/api/admin/users/${currentUserId}/industry`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error('更新用户行业权限失败');
+
+        const result = await response.json();
+        console.log('✅ 更新成功:', result);
+        
+        alert(`用户行业权限更新成功！\n已授权行业: ${industries.join(', ')}`);
+        
+        // 关闭编辑模态框并刷新用户列表
+        document.getElementById('edit-user-modal').style.display = 'none';
+        loadUsers(currentUserPage);
+
+      } catch (error) {
+        console.error('❌ 更新用户行业权限失败:', error);
+        alert('更新用户行业权限失败: ' + error.message);
+      }
+    }
+
+    // 更新用户过期时间
+    async function updateUserExpire() {
+      const months = document.getElementById('edit-user-expire').value;
+
+      try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`/api/admin/users/${currentUserId}/expire`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ months: parseInt(months) })
+        });
+
+        if (!response.ok) throw new Error('更新用户使用时限失败');
+
+        const result = await response.json();
+        alert(`用户使用时限更新成功，新的过期时间：${result.expire_date_formatted}`);
+        loadUsers(currentUserPage);
+
+      } catch (error) {
+        console.error('更新用户使用时限失败:', error);
+        alert('更新用户使用时限失败');
+      }
+    }
+
+    // 渲染分页
+    function renderPagination(containerId, current, total, loadFunction) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      container.innerHTML = '';
+
+      if (total <= 1) return;
+
+      for (let i = 1; i <= total; i++) {
+        const button = document.createElement('button');
+        button.textContent = i;
+        button.className = i === current ? 'active' : '';
+        button.onclick = () => loadFunction(i);
+        container.appendChild(button);
+      }
+    }
+
+    // 关闭模态框
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+    }
+
+    // 退出登录
+    function logout() {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userInfo');
+      window.location.href = '/';
+    }
+
+    // Excel导入相关功能
+    let selectedFile = null;
+
+    // 处理文件选择
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // 验证文件类型
+      const allowedTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel'
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        alert('错误：请选择有效的Excel文件（.xlsx或.xls格式）');
+        clearFile();
+        return;
+      }
+
+      // 验证文件大小（10MB）
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        alert('错误：文件大小不能超过10MB');
+        clearFile();
+        return;
+      }
+
+      selectedFile = file;
+
+      // 显示文件信息
+      const fileName = document.getElementById('fileName');
+      const fileSize = document.getElementById('fileSize');
+      const selectedFileDiv = document.getElementById('selectedFile');
+      const importBtn = document.getElementById('importBtn');
+
+      fileName.textContent = file.name;
+      fileSize.textContent = `(${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+      selectedFileDiv.style.display = 'flex';
+      importBtn.disabled = false;
+
+      console.log('文件选择成功:', file.name, '大小:', file.size);
+    }
+
+    // 清除文件选择
+    function clearFile() {
+      selectedFile = null;
+      document.getElementById('excelFile').value = '';
+      document.getElementById('selectedFile').style.display = 'none';
+      document.getElementById('importBtn').disabled = true;
+      
+      // 隐藏进度和结果
+      document.getElementById('importProgress').style.display = 'none';
+      document.getElementById('importResult').style.display = 'none';
+    }
+
+    // 下载模板文件
+    async function downloadTemplate(type) {
+      try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`/api/admin/download/template/${type}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`下载模板失败: ${response.status} ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${type === 'investments' ? '投资数据' : '用户数据'}_模板.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        console.log(`${type}模板下载成功`);
+      } catch (error) {
+        console.error('下载模板失败:', error);
+        alert('下载模板失败: ' + error.message);
+      }
+    }
+
+    // 开始导入
+    async function startImport() {
+      if (!selectedFile) {
+        alert('请先选择Excel文件');
+        return;
+      }
+
+      const importType = document.querySelector('input[name="importType"]:checked').value;
+      const skipDuplicates = document.getElementById('skipDuplicates').checked;
+      const validateData = document.getElementById('validateData').checked;
+
+      console.log('开始导入:', {
+        file: selectedFile.name,
+        type: importType,
+        skipDuplicates,
+        validateData
+      });
+
+      // 显示进度条
+      showImportProgress('正在上传文件...', 0);
+
+      try {
+        const token = localStorage.getItem('authToken');
+        const formData = new FormData();
+        formData.append('excelFile', selectedFile);
+        formData.append('skipDuplicates', skipDuplicates);
+        formData.append('validateData', validateData);
+
+        const response = await fetch(`/api/admin/import/${importType}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        // 更新进度
+        showImportProgress('正在处理数据...', 50);
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || `导入失败: ${response.status} ${response.statusText}`);
+        }
+
+        // 导入成功
+        showImportProgress('导入完成！', 100);
+        setTimeout(() => {
+          hideImportProgress();
+          showImportResult(result, 'success');
+        }, 1000);
+
+        console.log('导入成功:', result);
+
+      } catch (error) {
+        console.error('导入失败:', error);
+        hideImportProgress();
+        showImportResult({ error: error.message }, 'error');
+        
+        // 弹出错误对话框
+        alert('文件上传失败:\n' + error.message + '\n\n请检查:\n1. 网络连接是否正常\n2. 文件格式是否正确\n3. 文件内容是否符合模板要求');
+      }
+    }
+
+    // 显示导入进度
+    function showImportProgress(text, percentage) {
+      const progressDiv = document.getElementById('importProgress');
+      const progressFill = document.getElementById('progressFill');
+      const progressText = document.getElementById('progressText');
+      const importBtn = document.getElementById('importBtn');
+
+      progressDiv.style.display = 'block';
+      progressFill.style.width = percentage + '%';
+      progressText.textContent = text;
+      importBtn.disabled = true;
+    }
+
+    // 隐藏导入进度
+    function hideImportProgress() {
+      const progressDiv = document.getElementById('importProgress');
+      const importBtn = document.getElementById('importBtn');
+
+      progressDiv.style.display = 'none';
+      importBtn.disabled = false;
+    }
+
+    // 显示导入结果
+    function showImportResult(result, type) {
+      const resultDiv = document.getElementById('importResult');
+      const resultContent = document.getElementById('resultContent');
+
+      let html = '';
+
+      if (type === 'success') {
+        html = `
+          <div class="result-success">
+            <h4>✅ 导入成功！</h4>
+            <div class="result-stats">
+              <div class="stat-item">
+                <span class="stat-label">总数据量：</span>
+                <span class="stat-value">${result.total || 0} 条</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">成功导入：</span>
+                <span class="stat-value">${result.imported || 0} 条</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">跳过重复：</span>
+                <span class="stat-value">${result.skipped || 0} 条</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">导入失败：</span>
+                <span class="stat-value">${result.failed || 0} 条</span>
+              </div>
+            </div>
+            ${result.errors && result.errors.length > 0 ? `
+              <div class="result-errors">
+                <h5>⚠️ 错误详情：</h5>
+                <ul>
+                  ${result.errors.map(error => `<li>${error}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        html = `
+          <div class="result-error">
+            <h4>❌ 导入失败</h4>
+            <p class="error-message">${result.error}</p>
+            <div class="error-tips">
+              <h5>💡 解决建议：</h5>
+              <ul>
+                <li>检查Excel文件格式是否正确</li>
+                <li>确保文件内容符合模板要求</li>
+                <li>检查网络连接状态</li>
+                <li>文件大小不超过10MB</li>
+              </ul>
+            </div>
+          </div>
+        `;
+      }
+
+      resultContent.innerHTML = html;
+      resultDiv.style.display = 'block';
+    }
+
+    // 页面初始化
+    window.addEventListener('load', async () => {
+      const hasAuth = await checkAdminAuth();
+      if (hasAuth) {
+        loadStats();
+        loadIndustries();
+      }
+    });
+
+    // 点击模态框外部关闭
+    window.onclick = function(event) {
+      if (event.target.classList.contains('modal')) {
+        event.target.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html> 

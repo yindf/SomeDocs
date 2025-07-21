@@ -1,0 +1,48 @@
+{
+  "name": "myweb",
+  "version": "1.0.0",
+  "description": "投资数据管理系统",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "init": "node init-admin.js",
+    "import": "node importData.js",
+    "backup": "node -e \"require('./scheduler').manualBackup()\"",
+    "create-codes": "node create-codes.js",
+    "codes-stats": "node create-codes.js stats",
+    "codes-list": "node create-codes.js list",
+    "check-users": "node create-codes.js check-users",
+    "test-system": "node test-system.js",
+    "status": "node system-status.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "investment",
+    "data",
+    "management",
+    "nodejs",
+    "sqlite",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "node-cron": "^3.0.2",
+    "sqlite3": "^5.1.7",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

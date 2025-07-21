@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>投资数据管理系统</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>投资数据管理系统</h1>
+              <nav>
+        <ul>
+          <li><a href="#welcome" class="nav-link" data-section="welcome">首页</a></li>
+          <li><a href="#" id="loginNav" onclick="showLoginModal()">登录</a></li>
+          <li><a href="#" id="registerNav" onclick="showRegisterModal()">注册</a></li>
+          <li><a href="#data" class="nav-link" data-section="data" id="dataNav" style="display: none;">数据查询</a></li>
+          <li><a href="admin.html" id="adminLink" style="display: none;" target="_blank">🛠️ 管理员控制台</a></li>
+          <li><a href="#" id="logoutLink" style="display: none;" onclick="logout()">退出登录</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main>
+      <!-- 欢迎页面 -->
+      <section id="welcome" class="panel active">
+        <h2>欢迎使用投资数据管理系统</h2>
+        <div class="welcome-content">
+          <div class="welcome-actions">
+            <p>请选择操作：</p>
+            <button class="btn btn-primary" onclick="showLoginModal()">登录</button>
+            <button class="btn" onclick="showRegisterModal()">注册</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 数据查询页面 -->
+      <section id="data" class="panel">
+        <div class="data-header">
+          <h2>投资数据查询</h2>
+          <div id="user-info" class="user-info" style="display: none;">
+            <span>欢迎，<span id="username"></span></span>
+            <span id="role-badge" class="role-badge"></span>
+            <span id="industry-badge" class="industry-badge"></span>
+            <div id="expire-warning" class="expire-warning" style="display: none;"></div>
+            <button onclick="logout()">退出登录</button>
+          </div>
+        </div>
+        
+        <div class="search-section">
+          <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="搜索公司名称、行业、投资机构...">
+            <button id="searchButton" class="btn btn-search">🔍 搜索</button>
+            <button id="clearSearchButton" class="btn btn-secondary" onclick="clearSearch()" style="display: none;">清空</button>
+          </div>
+        </div>
+        
+        <div class="data-stats" id="dataStats">
+          <span>共找到 <strong id="totalCount">0</strong> 条记录</span>
+        </div>
+        
+        <div class="table-container">
+          <table id="dataTable" class="data-table">
+            <thead>
+              <tr>
+                <th>公司名称</th>
+                <th>公司简介</th>
+                <th>融资轮次</th>
+                <th>日期</th>
+                <th>行业赛道</th>
+                <th>投资机构</th>
+                <th id="actionColumn" style="display: none;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="dataTableBody">
+              <tr>
+                <td colspan="6" class="loading">正在加载数据...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="pagination">
+          <button id="prevPage" class="btn">上一页</button>
+          <span id="pageInfo">第 1 页 / 共 1 页</span>
+          <button id="nextPage" class="btn">下一页</button>
+        </div>
+      </section>
+
+      <!-- 未登录提示 -->
+      <section id="loginRequired" class="panel" style="display: none;">
+        <div class="login-required">
+          <h2>🔒 需要登录</h2>
+          <p>请先登录后再访问投资数据。</p>
+          <div class="login-required-actions">
+            <button class="btn btn-primary" onclick="showLoginModal()">去登录</button>
+            <button class="btn" onclick="showRegisterModal()">注册账号</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2024 投资数据管理系统</p>
+    </footer>
+  </div>
+
+  <!-- 登录对话框 -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>用户登录</h3>
+        <span class="close" onclick="closeModal('loginModal')">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="loginUsername">用户名</label>
+            <input type="text" id="loginUsername" required placeholder="请输入用户名">
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">密码</label>
+            <input type="password" id="loginPassword" required placeholder="请输入密码">
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary">登录</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal('loginModal')">取消</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 注册对话框 -->
+  <div id="registerModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>用户注册</h3>
+        <span class="close" onclick="closeModal('registerModal')">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="registerForm">
+          <div class="form-group">
+            <label for="registerUsername">用户名</label>
+            <input type="text" id="registerUsername" required placeholder="请输入用户名（3-20个字符）">
+          </div>
+          <div class="form-group">
+            <label for="registerPassword">密码</label>
+            <input type="password" id="registerPassword" required placeholder="请输入密码（至少6位）">
+          </div>
+          <div class="form-group">
+            <label for="confirmPassword">确认密码</label>
+            <input type="password" id="confirmPassword" required placeholder="请再次输入密码">
+          </div>
+          <div class="form-group">
+            <label for="registerEmail">邮箱</label>
+            <input type="email" id="registerEmail" required placeholder="请输入邮箱地址">
+          </div>
+          <div class="form-group">
+            <label for="inviteCode">激活码</label>
+            <input type="text" id="inviteCode" required placeholder="请输入激活码">
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary">注册</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal('registerModal')">取消</button>
+          </div>
+        </form>
+        <div class="modal-tips">
+          <p><small>💬 如果没有激活码，请添加客服微信：<strong>xintidee</strong></small></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

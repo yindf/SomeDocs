@@ -10,7 +10,7 @@
   <div class="container">
     <header>
       <h1>投资数据管理系统</h1>
-              <nav>
+      <nav>
         <ul>
           <li><a href="#welcome" class="nav-link" data-section="welcome">首页</a></li>
           <li><a href="#" id="loginNav" onclick="showLoginModal()">登录</a></li>
@@ -20,6 +20,18 @@
           <li><a href="#" id="logoutLink" style="display: none;" onclick="logout()">退出登录</a></li>
         </ul>
       </nav>
+      
+      <!-- 用户信息区域 - 移动到头部右上角 -->
+      <div id="user-info" class="user-info-topright" style="display: none;">
+        <div class="user-info-content">
+          <div class="user-welcome">
+            <span>欢迎，<span id="username"></span></span>
+            <span id="role-badge" class="role-badge"></span>
+            <span id="industry-badge" class="industry-badge"></span>
+          </div>
+          <div id="expire-warning" class="expire-warning" style="display: none;"></div>
+        </div>
+      </div>
     </header>
 
     <main>
@@ -39,13 +51,6 @@
       <section id="data" class="panel">
         <div class="data-header">
           <h2>投资数据查询</h2>
-          <div id="user-info" class="user-info" style="display: none;">
-            <span>欢迎，<span id="username"></span></span>
-            <span id="role-badge" class="role-badge"></span>
-            <span id="industry-badge" class="industry-badge"></span>
-            <div id="expire-warning" class="expire-warning" style="display: none;"></div>
-            <button onclick="logout()">退出登录</button>
-          </div>
         </div>
         
         <div class="search-section">

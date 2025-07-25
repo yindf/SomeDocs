@@ -204,12 +204,16 @@ async function deleteInviteCode(id) {
 // 加载投资数据
 async function loadInvestments(page = 1) {
   try {
-    const response = await fetch(`/api/investments?page=${page}`);
+    const response = await fetch(`/api/investments?page=${page}`, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
     
     if (response.ok) {
       const data = await response.json();
       displayInvestments(data.data);
-      createPagination('investmentsPagination', data.page, data.totalPages, (p) => loadInvestments(p));
+      createPagination('investments-pagination', data.page, data.totalPages, (p) => loadInvestments(p));
     }
   } catch (error) {
     console.error('加载投资数据失败:', error);
@@ -218,7 +222,9 @@ async function loadInvestments(page = 1) {
 
 // 显示投资数据
 function displayInvestments(investments) {
-  const tbody = document.getElementById('investmentsTable');
+  const tbody = document.getElementById('investments-tbody');
+  if (!tbody) return;
+  
   tbody.innerHTML = '';
   
   investments.forEach(investment => {
@@ -226,7 +232,9 @@ function displayInvestments(investments) {
     row.innerHTML = `
       <td>${investment.id}</td>
       <td>${investment.company_name || ''}</td>
+      <td>${investment.company_description || ''}</td>
       <td>${investment.funding_round || ''}</td>
+      <td>${investment.date || ''}</td>
       <td>${investment.industry || ''}</td>
       <td>${investment.investment_institution || ''}</td>
       <td>
@@ -250,7 +258,7 @@ async function loadUsers(page = 1) {
     if (response.ok) {
       const data = await response.json();
       displayUsers(data.data);
-      createPagination('usersPagination', data.page, data.totalPages, (p) => loadUsers(p));
+      createPagination('users-pagination', data.page, data.totalPages, (p) => loadUsers(p));
     }
   } catch (error) {
     console.error('加载用户数据失败:', error);
@@ -259,21 +267,27 @@ async function loadUsers(page = 1) {
 
 // 显示用户数据
 function displayUsers(users) {
-  const tbody = document.getElementById('usersTable');
+  const tbody = document.getElementById('users-tbody');
+  if (!tbody) return;
+  
   tbody.innerHTML = '';
   
   users.forEach(user => {
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td>${user.id}</td>
       <td>${user.username}</td>
       <td>${user.email}</td>
       <td><span class="${user.role === 'admin' ? 'status-used' : 'status-unused'}">
         ${user.role === 'admin' ? '管理员' : '普通用户'}
       </span></td>
-      <td>${new Date(user.created_at).toLocaleString()}</td>
+      <td>${user.industry || ''}</td>
+      <td>${user.expire_date_formatted || '永久'}</td>
+      <td>${user.days_remaining !== null ? (user.days_remaining >= 0 ? user.days_remaining + ' 天' : '已过期') : '永久'}</td>
+      <td><span class="status-${user.status === '正常' ? 'unused' : user.status === '已过期' ? 'used' : 'pending'}">${user.status || '正常'}</span></td>
+      <td>${new Date(user.created_at).toLocaleDateString('zh-CN')}</td>
       <td>
-        ${user.role !== 'admin' ? `<button class="btn btn-danger" onclick="deleteUser(${user.id})">删除</button>` : ''}
+        <button class="btn" onclick="editUser(${user.id}, '${user.username}', '${user.industry || ''}')">编辑</button>
+        ${user.role !== 'admin' ? `<button class="btn btn-danger" onclick="deleteUser(${user.id})" style="margin-left: 5px;">删除</button>` : ''}
       </td>
     `;
     tbody.appendChild(row);
@@ -544,4 +558,242 @@ window.onclick = function(event) {
       modal.style.display = 'none';
     }
   });
+}
+
+// 切换界面显示
+function showSection(section) {
+  // 隐藏所有界面
+  const sections = document.querySelectorAll('.admin-section');
+  sections.forEach(s => s.classList.remove('active'));
+  
+  // 移除所有导航按钮的active类
+  const navButtons = document.querySelectorAll('.nav-btn');
+  navButtons.forEach(btn => btn.classList.remove('active'));
+  
+  // 显示指定界面
+  const targetSection = document.getElementById(section + '-section');
+  if (targetSection) {
+    targetSection.classList.add('active');
+  }
+  
+  // 激活对应的导航按钮
+  const targetBtn = event?.target || document.querySelector(`[onclick="showSection('${section}')"]`);
+  if (targetBtn) {
+    targetBtn.classList.add('active');
+  }
+  
+  // 根据不同界面加载对应数据
+  switch(section) {
+    case 'stats':
+      loadDashboard();
+      break;
+    case 'invites':
+      loadInviteCodes();
+      loadIndustries();
+      break;
+    case 'users':
+      loadUsers();
+      break;
+    case 'investments':
+      loadInvestmentsForAdmin();
+      loadInvestmentIndustries();
+      break;
+    case 'import':
+      // 数据导入界面不需要加载额外数据
+      break;
+  }
+}
+
+// 为管理后台加载投资数据
+async function loadInvestmentsForAdmin(page = 1, industry = '', search = '') {
+  try {
+    let url = `/api/investments?page=${page}`;
+    if (industry) url += `&industry=${industry}`;
+    if (search) url += `&search=${search}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      displayInvestmentsForAdmin(data.data);
+      createPagination('investments-pagination', data.page, data.totalPages, (p) => {
+        const currentIndustry = document.getElementById('filter-investment-industry').value;
+        const currentSearch = document.getElementById('search-company').value;
+        loadInvestmentsForAdmin(p, currentIndustry, currentSearch);
+      });
+    }
+  } catch (error) {
+    console.error('加载投资数据失败:', error);
+    showAlert('error', '加载投资数据失败');
+  }
+}
+
+// 显示投资数据（管理后台版本）
+function displayInvestmentsForAdmin(investments) {
+  const tbody = document.getElementById('investments-tbody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  if (!investments || investments.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align: center; padding: 20px; color: #666;">
+          暂无投资数据
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  investments.forEach(investment => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${investment.id}</td>
+      <td title="${investment.company_name || ''}">${truncateText(investment.company_name || '', 20)}</td>
+      <td title="${investment.company_description || ''}">${truncateText(investment.company_description || '', 30)}</td>
+      <td>${investment.funding_round || ''}</td>
+      <td>${investment.date || ''}</td>
+      <td>${investment.industry || ''}</td>
+      <td title="${investment.investment_institution || ''}">${truncateText(investment.investment_institution || '', 20)}</td>
+      <td>
+        <button class="btn" onclick="editInvestment(${investment.id})" style="margin-right: 5px;">编辑</button>
+        <button class="btn btn-danger" onclick="deleteInvestment(${investment.id})">删除</button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+// 文本截断函数
+function truncateText(text, maxLength) {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
+
+// 加载投资相关的行业列表
+async function loadInvestmentIndustries() {
+  try {
+    const response = await fetch('/api/admin/industries', {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+    
+    if (response.ok) {
+      const industries = await response.json();
+      const select = document.getElementById('filter-investment-industry');
+      if (select) {
+        // 保留当前选择
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">全部行业</option>';
+        
+        industries.forEach(industry => {
+          const option = document.createElement('option');
+          option.value = industry;
+          option.textContent = industry;
+          select.appendChild(option);
+        });
+        
+        // 恢复之前的选择
+        select.value = currentValue;
+      }
+    }
+  } catch (error) {
+    console.error('加载行业列表失败:', error);
+  }
+}
+
+// 搜索投资数据
+function searchInvestments(event) {
+  if (event.key === 'Enter' || event.type === 'input') {
+    const search = event.target.value.trim();
+    const industry = document.getElementById('filter-investment-industry').value;
+    loadInvestmentsForAdmin(1, industry, search);
+  }
+}
+
+// 清除投资数据筛选
+function clearInvestmentFilters() {
+  document.getElementById('filter-investment-industry').value = '';
+  document.getElementById('search-company').value = '';
+  loadInvestmentsForAdmin(1);
+}
+
+// 编辑投资数据（占位符函数）
+function editInvestment(id) {
+  showAlert('info', `编辑投资数据功能开发中，记录ID: ${id}`);
+  // TODO: 实现编辑功能
+}
+
+// 编辑用户（占位符函数）
+function editUser(id, username, industry) {
+  showAlert('info', `编辑用户功能开发中，用户ID: ${id}, 用户名: ${username}`);
+  // TODO: 实现编辑功能
+}
+
+// 删除用户（占位符函数）
+function deleteUser(id) {
+  if (!confirm('确定要删除这个用户吗？此操作不可撤销！')) return;
+  
+  showAlert('info', `删除用户功能开发中，用户ID: ${id}`);
+  // TODO: 实现删除功能
+}
+
+// 清空所有投资数据 - 危险操作
+async function clearAllInvestmentData() {
+  // 多重确认机制
+  const firstConfirm = confirm('⚠️ 警告：您即将删除所有投资数据！\n\n这个操作将：\n• 永久删除所有投资记录\n• 无法恢复\n• 影响所有用户\n\n确定要继续吗？');
+  if (!firstConfirm) return;
+  
+  const secondConfirm = confirm('⚠️ 最后确认：\n\n您真的要删除所有投资数据吗？\n\n请输入"删除"来确认此操作');
+  if (!secondConfirm) return;
+  
+  // 要求用户输入确认文本
+  const confirmText = prompt('请输入"清空所有数据"来确认此危险操作：');
+  if (confirmText !== '清空所有数据') {
+    showAlert('error', '确认文本不正确，操作已取消');
+    return;
+  }
+  
+  try {
+    showAlert('info', '正在清空数据，请稍候...');
+    
+    const response = await fetch('/api/admin/clear-all-data', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({
+        confirmToken: 'CLEAR_ALL_INVESTMENT_DATA_CONFIRMED'
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      showAlert('success', `✅ ${data.message}\n操作时间: ${new Date(data.timestamp).toLocaleString()}\n操作员: ${data.operator}`);
+      
+      // 刷新数据显示
+      if (document.getElementById('investments-section').classList.contains('active')) {
+        loadInvestmentsForAdmin();
+      }
+      
+      // 刷新统计数据
+      loadDashboard();
+      
+    } else {
+      showAlert('error', `❌ 清空失败: ${data.error || '未知错误'}`);
+    }
+    
+  } catch (error) {
+    console.error('清空数据失败:', error);
+    showAlert('error', '❌ 网络错误，清空操作失败');
+  }
 } 

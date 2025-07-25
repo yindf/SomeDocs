@@ -104,24 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 分页相关
-    if (prevPageBtn) {
-      prevPageBtn.addEventListener('click', () => {
-        if (currentPage > 1) {
-          currentPage--;
-          loadInvestmentData();
-        }
-      });
-    }
-
-    if (nextPageBtn) {
-      nextPageBtn.addEventListener('click', () => {
-        if (currentPage < totalPages) {
-          currentPage++;
-          loadInvestmentData();
-        }
-      });
-    }
+    // 分页相关 - 现在由动态分页控件处理，移除静态事件监听器
   }
 
   // 检查登录状态
@@ -241,7 +224,8 @@ document.addEventListener('DOMContentLoaded', () => {
       adminLink: document.getElementById('adminLink'),
       loginNav: document.getElementById('loginNav'),
       registerNav: document.getElementById('registerNav'),
-      actionColumn: document.getElementById('actionColumn')
+      actionColumn: document.getElementById('actionColumn'),
+      userInfo: document.getElementById('user-info')
     };
 
     if (elements.dataNav) elements.dataNav.style.display = 'none';
@@ -250,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elements.loginNav) elements.loginNav.style.display = 'block';
     if (elements.registerNav) elements.registerNav.style.display = 'block';
     if (elements.actionColumn) elements.actionColumn.style.display = 'none';
+    if (elements.userInfo) elements.userInfo.style.display = 'none';
 
     // 如果当前在数据页面，跳转到欢迎页面
     const dataPanel = document.getElementById('data');
@@ -564,21 +549,168 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
-  // 更新分页信息
+  // 更新分页信息 - 改进版本，带数字页码
   function updatePagination(data) {
     totalPages = data.totalPages || 1;
     
+    // 更新页面信息文本
     if (pageInfo) {
       const total = data.total || 0;
       pageInfo.textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页 (共 ${total} 条记录)`;
     }
 
-    if (prevPageBtn) {
-      prevPageBtn.disabled = currentPage === 1;
+    // 创建改进的分页控件
+    createAdvancedPagination();
+  }
+
+  // 创建改进的分页控件
+  function createAdvancedPagination() {
+    const paginationContainer = document.querySelector('.pagination');
+    if (!paginationContainer) return;
+    
+    // 清空现有内容
+    paginationContainer.innerHTML = '';
+    
+    if (totalPages <= 1) {
+      return;
     }
-    if (nextPageBtn) {
-      nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+    
+    const paginationWrapper = document.createElement('div');
+    paginationWrapper.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 20px 0;
+    `;
+    
+    // 上一页按钮
+    const prevBtn = document.createElement('button');
+    prevBtn.textContent = '上一页';
+    prevBtn.className = 'btn';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => {
+      if (currentPage > 1) {
+        currentPage--;
+        loadInvestmentData();
+      }
+    };
+    prevBtn.style.cssText = `
+      padding: 8px 12px;
+      margin: 2px;
+      ${currentPage === 1 ? 'opacity: 0.5; cursor: not-allowed;' : ''}
+    `;
+    paginationWrapper.appendChild(prevBtn);
+    
+    // 计算显示的页码范围
+    let startPage = Math.max(1, currentPage - 5);
+    let endPage = Math.min(totalPages, currentPage + 4);
+    
+    // 如果总页数较少，显示所有页码
+    if (totalPages <= 10) {
+      startPage = 1;
+      endPage = totalPages;
     }
+    
+    // 第一页
+    if (startPage > 1) {
+      const firstBtn = document.createElement('button');
+      firstBtn.textContent = '1';
+      firstBtn.className = 'btn';
+      firstBtn.onclick = () => {
+        currentPage = 1;
+        loadInvestmentData();
+      };
+      firstBtn.style.cssText = `
+        padding: 8px 12px;
+        margin: 2px;
+        min-width: 40px;
+      `;
+      paginationWrapper.appendChild(firstBtn);
+      
+      if (startPage > 2) {
+        const dots1 = document.createElement('span');
+        dots1.textContent = '...';
+        dots1.style.cssText = 'padding: 8px 4px; color: #666;';
+        paginationWrapper.appendChild(dots1);
+      }
+    }
+    
+    // 页码按钮
+    for (let i = startPage; i <= endPage; i++) {
+      const pageBtn = document.createElement('button');
+      pageBtn.textContent = i;
+      pageBtn.className = 'btn';
+      pageBtn.onclick = () => {
+        currentPage = i;
+        loadInvestmentData();
+      };
+      
+      const isActive = i === currentPage;
+      pageBtn.style.cssText = `
+        padding: 8px 12px;
+        margin: 2px;
+        min-width: 40px;
+        ${isActive ? 'background-color: #007bff; color: white; font-weight: bold;' : ''}
+      `;
+      
+      paginationWrapper.appendChild(pageBtn);
+    }
+    
+    // 最后一页
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        const dots2 = document.createElement('span');
+        dots2.textContent = '...';
+        dots2.style.cssText = 'padding: 8px 4px; color: #666;';
+        paginationWrapper.appendChild(dots2);
+      }
+      
+      const lastBtn = document.createElement('button');
+      lastBtn.textContent = totalPages;
+      lastBtn.className = 'btn';
+      lastBtn.onclick = () => {
+        currentPage = totalPages;
+        loadInvestmentData();
+      };
+      lastBtn.style.cssText = `
+        padding: 8px 12px;
+        margin: 2px;
+        min-width: 40px;
+      `;
+      paginationWrapper.appendChild(lastBtn);
+    }
+    
+    // 下一页按钮
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = '下一页';
+    nextBtn.className = 'btn';
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.onclick = () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        loadInvestmentData();
+      }
+    };
+    nextBtn.style.cssText = `
+      padding: 8px 12px;
+      margin: 2px;
+      ${currentPage === totalPages ? 'opacity: 0.5; cursor: not-allowed;' : ''}
+    `;
+    paginationWrapper.appendChild(nextBtn);
+    
+    // 页面信息
+    const pageInfoDiv = document.createElement('div');
+    pageInfoDiv.textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
+    pageInfoDiv.style.cssText = `
+      margin-left: 15px;
+      color: #666;
+      font-size: 0.9rem;
+    `;
+    paginationWrapper.appendChild(pageInfoDiv);
+    
+    paginationContainer.appendChild(paginationWrapper);
   }
 
   // 更新数据统计

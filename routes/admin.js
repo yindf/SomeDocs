@@ -888,4 +888,57 @@ router.get('/download/template/:type', authenticateToken, requireAdmin, (req, re
   }
 });
 
+// 清空所有投资数据 - 危险操作，需要多重确认
+router.delete('/clear-all-data', authenticateToken, requireAdmin, (req, res) => {
+  const { confirmToken } = req.body;
+  
+  // 简单的确认令牌验证
+  if (confirmToken !== 'CLEAR_ALL_INVESTMENT_DATA_CONFIRMED') {
+    return res.status(400).json({ error: '确认令牌无效' });
+  }
+
+  console.log('⚠️ 管理员请求清空所有投资数据:', req.user.username);
+
+  // 开始事务
+  db.run('BEGIN TRANSACTION', (beginErr) => {
+    if (beginErr) {
+      console.error('❌ 开始事务失败:', beginErr);
+      return res.status(500).json({ error: '操作失败' });
+    }
+
+    // 删除所有投资数据
+    db.run('DELETE FROM investments', (deleteErr) => {
+      if (deleteErr) {
+        console.error('❌ 删除投资数据失败:', deleteErr);
+        db.run('ROLLBACK');
+        return res.status(500).json({ error: '清空数据失败' });
+      }
+
+      // 重置自增ID
+      db.run('DELETE FROM sqlite_sequence WHERE name="investments"', (resetErr) => {
+        if (resetErr) {
+          console.warn('⚠️  重置自增ID失败，但数据已清空:', resetErr);
+        }
+
+        // 提交事务
+        db.run('COMMIT', (commitErr) => {
+          if (commitErr) {
+            console.error('❌ 提交事务失败:', commitErr);
+            db.run('ROLLBACK');
+            return res.status(500).json({ error: '操作失败' });
+          }
+
+          console.log('✅ 所有投资数据已被管理员清空:', req.user.username);
+          
+          res.json({ 
+            message: '所有投资数据已清空',
+            timestamp: new Date().toISOString(),
+            operator: req.user.username
+          });
+        });
+      });
+    });
+  });
+});
+
 module.exports = router;

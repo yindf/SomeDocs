@@ -630,6 +630,7 @@
       <button onclick="showSection('stats')" class="nav-btn active">系统统计</button>
       <button onclick="showSection('invites')" class="nav-btn">邀请码管理</button>
       <button onclick="showSection('users')" class="nav-btn">用户管理</button>
+      <button onclick="showSection('investments')" class="nav-btn">投资数据管理</button>
       <button onclick="showSection('import')" class="nav-btn">数据导入</button>
       <button onclick="logout()" class="btn btn-danger" style="float: right;">退出登录</button>
     </div>
@@ -739,6 +740,70 @@
         </tbody>
       </table>
       <div class="pagination" id="users-pagination"></div>
+    </div>
+
+    <!-- 投资数据管理 -->
+    <div id="investments-section" class="admin-section">
+      <h2>投资数据管理</h2>
+      
+      <!-- 筛选器 -->
+      <div class="form-inline" style="margin-bottom: 20px;">
+                  <div class="form-group">
+            <label>筛选行业</label>
+            <select id="filter-investment-industry" onchange="filterInvestmentData()">
+              <option value="">全部行业</option>
+            </select>
+          </div>
+                  <div class="form-group">
+            <label>搜索公司</label>
+            <input type="text" id="search-company" placeholder="输入公司名称、行业或投资机构" 
+                   onkeyup="if(event.key==='Enter') searchInvestmentData()" 
+                   oninput="debounceSearch()">
+          </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button onclick="clearInvestmentFilters()" class="btn">清除筛选</button>
+        </div>
+      </div>
+      
+      <!-- 投资数据统计 -->
+      <div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div id="investment-stats" style="font-size: 1.1rem; font-weight: bold; color: #495057;">
+            共 0 条投资记录
+          </div>
+          <div style="font-size: 0.9rem; color: #6c757d;">
+            数据已加载并实时更新
+          </div>
+        </div>
+      </div>
+
+      <!-- 危险操作区域 -->
+      <div style="margin-bottom: 20px; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px;">
+        <h4 style="color: #856404; margin: 0 0 10px 0;">⚠️ 危险操作</h4>
+        <p style="color: #856404; margin: 0 0 10px 0;">以下操作将永久删除数据，请谨慎使用！</p>
+        <button onclick="clearAllInvestmentData()" class="btn btn-danger" style="background-color: #dc3545;">
+          🗑️ 清空所有投资数据
+        </button>
+      </div>
+      
+      <table class="data-table" id="investments-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>公司名称</th>
+            <th>公司简介</th>
+            <th>轮次</th>
+            <th>日期</th>
+            <th>行业</th>
+            <th>投资机构</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="investments-tbody">
+        </tbody>
+      </table>
+      <div class="pagination" id="investments-pagination"></div>
     </div>
   </div>
 
@@ -1406,6 +1471,134 @@
       }
     }
 
+    // 改进的分页创建函数 - 显示页码数字
+    function createAdvancedPagination(containerId, currentPage, totalPages, callback) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      
+      container.innerHTML = '';
+      
+      if (totalPages <= 1) return;
+      
+      const paginationWrapper = document.createElement('div');
+      paginationWrapper.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin: 20px 0;
+      `;
+      
+      // 上一页按钮
+      const prevBtn = document.createElement('button');
+      prevBtn.textContent = '上一页';
+      prevBtn.className = 'btn';
+      prevBtn.disabled = currentPage === 1;
+      prevBtn.onclick = () => callback(currentPage - 1);
+      prevBtn.style.cssText = `
+        padding: 8px 12px;
+        margin: 2px;
+        ${currentPage === 1 ? 'opacity: 0.5; cursor: not-allowed;' : ''}
+      `;
+      paginationWrapper.appendChild(prevBtn);
+      
+      // 计算显示的页码范围
+      let startPage = Math.max(1, currentPage - 5);
+      let endPage = Math.min(totalPages, currentPage + 4);
+      
+      // 如果总页数较少，显示所有页码
+      if (totalPages <= 10) {
+        startPage = 1;
+        endPage = totalPages;
+      }
+      
+      // 第一页
+      if (startPage > 1) {
+        const firstBtn = document.createElement('button');
+        firstBtn.textContent = '1';
+        firstBtn.className = 'btn';
+        firstBtn.onclick = () => callback(1);
+        firstBtn.style.cssText = `
+          padding: 8px 12px;
+          margin: 2px;
+          min-width: 40px;
+        `;
+        paginationWrapper.appendChild(firstBtn);
+        
+        if (startPage > 2) {
+          const dots1 = document.createElement('span');
+          dots1.textContent = '...';
+          dots1.style.cssText = 'padding: 8px 4px; color: #666;';
+          paginationWrapper.appendChild(dots1);
+        }
+      }
+      
+      // 页码按钮
+      for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = i;
+        pageBtn.className = 'btn';
+        pageBtn.onclick = () => callback(i);
+        
+        const isActive = i === currentPage;
+        pageBtn.style.cssText = `
+          padding: 8px 12px;
+          margin: 2px;
+          min-width: 40px;
+          ${isActive ? 'background-color: #007bff; color: white; font-weight: bold;' : ''}
+        `;
+        
+        paginationWrapper.appendChild(pageBtn);
+      }
+      
+      // 最后一页
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          const dots2 = document.createElement('span');
+          dots2.textContent = '...';
+          dots2.style.cssText = 'padding: 8px 4px; color: #666;';
+          paginationWrapper.appendChild(dots2);
+        }
+        
+        const lastBtn = document.createElement('button');
+        lastBtn.textContent = totalPages;
+        lastBtn.className = 'btn';
+        lastBtn.onclick = () => callback(totalPages);
+        lastBtn.style.cssText = `
+          padding: 8px 12px;
+          margin: 2px;
+          min-width: 40px;
+        `;
+        paginationWrapper.appendChild(lastBtn);
+      }
+      
+      // 下一页按钮
+      const nextBtn = document.createElement('button');
+      nextBtn.textContent = '下一页';
+      nextBtn.className = 'btn';
+      nextBtn.disabled = currentPage === totalPages;
+      nextBtn.onclick = () => callback(currentPage + 1);
+      nextBtn.style.cssText = `
+        padding: 8px 12px;
+        margin: 2px;
+        ${currentPage === totalPages ? 'opacity: 0.5; cursor: not-allowed;' : ''}
+      `;
+      paginationWrapper.appendChild(nextBtn);
+      
+      // 页面信息
+      const pageInfo = document.createElement('div');
+      pageInfo.textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
+      pageInfo.style.cssText = `
+        margin-left: 15px;
+        color: #666;
+        font-size: 0.9rem;
+      `;
+      paginationWrapper.appendChild(pageInfo);
+      
+      container.appendChild(paginationWrapper);
+    }
+
     // 关闭模态框
     function closeModal(modalId) {
       document.getElementById(modalId).style.display = 'none';
@@ -1651,6 +1844,273 @@
 
       resultContent.innerHTML = html;
       resultDiv.style.display = 'block';
+    }
+
+    // 加载投资数据到管理界面
+    async function loadInvestmentDataForAdmin(page = 1, industry = '', search = '') {
+      console.log('🔍 管理员加载投资数据:', { page, industry, search });
+      
+      try {
+        let url = `/api/investments?page=${page}&limit=20`;
+        if (industry && industry !== 'all') {
+          url += `&industry=${encodeURIComponent(industry)}`;
+        }
+        if (search) {
+          url += `&search=${encodeURIComponent(search)}`;
+        }
+        
+        console.log('📡 请求URL:', url);
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('📊 投资数据加载成功:', data);
+        
+        displayInvestmentDataForAdmin(data.data || []);
+        
+        // 使用改进的分页
+        createAdvancedPagination('investments-pagination', 
+          data.page || page, 
+          data.totalPages || 1, 
+          (newPage) => {
+            const currentIndustry = document.getElementById('filter-investment-industry')?.value || '';
+            const currentSearch = document.getElementById('search-company')?.value || '';
+            loadInvestmentDataForAdmin(newPage, currentIndustry, currentSearch);
+          }
+        );
+        
+        // 更新统计信息
+        const statsElement = document.getElementById('investment-stats');
+        if (statsElement) {
+          statsElement.textContent = `共 ${data.total || 0} 条投资记录`;
+        }
+        
+      } catch (error) {
+        console.error('❌ 加载投资数据失败:', error);
+        displayInvestmentErrorForAdmin('加载投资数据失败: ' + error.message);
+      }
+    }
+
+    // 显示投资数据（管理界面版本）
+    function displayInvestmentDataForAdmin(investments) {
+      const tbody = document.getElementById('investments-tbody');
+      if (!tbody) {
+        console.error('❌ 找不到投资数据表格体元素');
+        return;
+      }
+      
+      tbody.innerHTML = '';
+      
+      if (!investments || investments.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 20px; color: #666;">
+              暂无投资数据
+            </td>
+          </tr>
+        `;
+        return;
+      }
+      
+      investments.forEach(investment => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${investment.id}</td>
+          <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" 
+              title="${escapeHtml(investment.company_name || '')}">${escapeHtml(investment.company_name || '-')}</td>
+          <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" 
+              title="${escapeHtml(investment.company_description || '')}">${escapeHtml(truncateText(investment.company_description || '-', 50))}</td>
+          <td>${escapeHtml(investment.funding_round || '-')}</td>
+          <td>${escapeHtml(investment.date || '-')}</td>
+          <td>${escapeHtml(investment.industry || '-')}</td>
+          <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" 
+              title="${escapeHtml(investment.investment_institution || '')}">${escapeHtml(investment.investment_institution || '-')}</td>
+          <td>
+            <button class="btn" onclick="editInvestmentRecord(${investment.id})" 
+                    style="padding: 5px 10px; margin: 2px; font-size: 0.8rem;">编辑</button>
+            <button class="btn btn-danger" onclick="deleteInvestmentRecord(${investment.id})" 
+                    style="padding: 5px 10px; margin: 2px; font-size: 0.8rem;">删除</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    // 显示投资数据加载错误
+    function displayInvestmentErrorForAdmin(message) {
+      const tbody = document.getElementById('investments-tbody');
+      if (tbody) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 20px; color: #e74c3c;">
+              ${message}
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // 编辑投资记录
+    function editInvestmentRecord(id) {
+      showMessage(`编辑投资记录功能开发中，记录ID: ${id}`, 'info');
+      // TODO: 实现编辑功能
+    }
+
+    // 删除投资记录
+    async function deleteInvestmentRecord(id) {
+      if (!confirm('确定要删除这条投资记录吗？此操作不可撤销！')) return;
+      
+      try {
+        const response = await fetch(`/api/investments/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showMessage('投资记录删除成功', 'success');
+          // 重新加载当前页数据
+          const currentIndustry = document.getElementById('filter-investment-industry')?.value || '';
+          const currentSearch = document.getElementById('search-company')?.value || '';
+          loadInvestmentDataForAdmin(1, currentIndustry, currentSearch);
+          
+          // 刷新统计数据
+          loadStats();
+        } else {
+          showMessage(`删除失败: ${data.error || '未知错误'}`, 'error');
+        }
+      } catch (error) {
+        console.error('删除投资记录失败:', error);
+        showMessage('网络错误，删除失败', 'error');
+      }
+    }
+
+    // 防抖搜索变量
+    let searchTimeout;
+    
+    // 防抖搜索
+    function debounceSearch() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        searchInvestmentData();
+      }, 500); // 500ms延迟
+    }
+
+    // 搜索投资数据
+    function searchInvestmentData() {
+      const search = document.getElementById('search-company')?.value?.trim() || '';
+      const industry = document.getElementById('filter-investment-industry')?.value || '';
+      console.log('🔍 执行搜索:', { search, industry });
+      loadInvestmentDataForAdmin(1, industry, search);
+    }
+
+    // 筛选投资数据
+    function filterInvestmentData() {
+      const industry = document.getElementById('filter-investment-industry')?.value || '';
+      const search = document.getElementById('search-company')?.value?.trim() || '';
+      loadInvestmentDataForAdmin(1, industry, search);
+    }
+
+    // 清除投资数据筛选
+    function clearInvestmentFilters() {
+      const industrySelect = document.getElementById('filter-investment-industry');
+      const searchInput = document.getElementById('search-company');
+      
+      if (industrySelect) industrySelect.value = '';
+      if (searchInput) searchInput.value = '';
+      
+      loadInvestmentDataForAdmin(1);
+    }
+
+    // 工具函数
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function truncateText(text, maxLength) {
+      if (!text) return '';
+      if (text.length <= maxLength) return text;
+      return text.substring(0, maxLength) + '...';
+    }
+
+    // 改进showSection函数，确保加载投资数据
+    const originalShowSection = window.showSection;
+    window.showSection = function(section) {
+      if (originalShowSection) {
+        originalShowSection(section);
+      }
+      
+      // 当切换到投资数据管理页面时，加载数据
+      if (section === 'investments') {
+        console.log('🔄 切换到投资数据管理页面，开始加载数据...');
+        setTimeout(() => {
+          loadInvestmentDataForAdmin();
+          loadIndustries(); // 加载行业选项
+        }, 100);
+      }
+    };
+
+    // 清空所有投资数据 - 危险操作
+    async function clearAllInvestmentData() {
+      // 多重确认机制
+      const firstConfirm = confirm('⚠️ 警告：您即将删除所有投资数据！\n\n这个操作将：\n• 永久删除所有投资记录\n• 无法恢复\n• 影响所有用户\n\n确定要继续吗？');
+      if (!firstConfirm) return;
+      
+      const secondConfirm = confirm('⚠️ 最后确认：\n\n您真的要删除所有投资数据吗？\n\n请再次确认此操作');
+      if (!secondConfirm) return;
+      
+      // 要求用户输入确认文本
+      const confirmText = prompt('请输入"清空所有数据"来确认此危险操作：');
+      if (confirmText !== '清空所有数据') {
+        alert('确认文本不正确，操作已取消');
+        return;
+      }
+      
+      try {
+        showMessage('正在清空数据，请稍候...', 'info');
+        
+        const response = await fetch('/api/admin/clear-all-data', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          },
+          body: JSON.stringify({
+            confirmToken: 'CLEAR_ALL_INVESTMENT_DATA_CONFIRMED'
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showMessage(`✅ ${data.message}\n操作时间: ${new Date(data.timestamp).toLocaleString()}\n操作员: ${data.operator}`, 'success');
+          
+          // 刷新数据显示
+          loadStats();
+          loadInvestmentDataForAdmin(); // 刷新投资数据显示
+          
+        } else {
+          showMessage(`❌ 清空失败: ${data.error || '未知错误'}`, 'error');
+        }
+        
+      } catch (error) {
+        console.error('清空数据失败:', error);
+        showMessage('❌ 网络错误，清空操作失败', 'error');
+      }
     }
 
     // 页面初始化

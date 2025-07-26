@@ -118,10 +118,13 @@ document.addEventListener('DOMContentLoaded', () => {
         userInfo = JSON.parse(storedUserInfo);
         console.log('用户已登录:', userInfo);
         updateUIForLoggedInUser();
+        // 如果用户已登录，自动跳转到数据页面而不是停留在欢迎页面
+        showSection('data');
       } catch(e) {
         console.error('解析用户信息失败:', e);
         localStorage.removeItem('userInfo');
         localStorage.removeItem('authToken');
+        updateUIForLoggedOutUser();
       }
     } else {
       console.log('用户未登录');

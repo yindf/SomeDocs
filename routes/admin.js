@@ -4,7 +4,7 @@ const router = express.Router();
 const { db } = require('../database');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const multer = require('multer');
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 
@@ -486,12 +486,37 @@ router.post('/import/investments', authenticateToken, requireAdmin, upload.singl
 
   try {
     // 读取Excel文件
-    const workbook = XLSX.readFile(filePath);
-    const sheetName = workbook.SheetNames[0]; // 读取第一个工作表
-    const worksheet = workbook.Sheets[sheetName];
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    const worksheet = workbook.worksheets[0]; // 读取第一个工作表
     
     // 将工作表转换为JSON数据
-    const rawData = XLSX.utils.sheet_to_json(worksheet);
+    const rawData = [];
+    const headerRow = worksheet.getRow(1);
+    const headers = [];
+    
+    // 获取表头
+    headerRow.eachCell((cell, colNumber) => {
+      headers[colNumber] = cell.value;
+    });
+    
+    // 读取数据行
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // 跳过表头
+      
+      const rowData = {};
+      row.eachCell((cell, colNumber) => {
+        if (headers[colNumber]) {
+          rowData[headers[colNumber]] = cell.value;
+        }
+      });
+      
+      // 只添加非空行
+      if (Object.keys(rowData).length > 0) {
+        rawData.push(rowData);
+      }
+    });
+    
     console.log(`📊 Excel文件包含 ${rawData.length} 行数据`);
 
     if (rawData.length === 0) {
@@ -513,14 +538,19 @@ router.post('/import/investments', authenticateToken, requireAdmin, upload.singl
         return;
       }
 
+      // 调试：输出第一行的所有字段名
+      if (index === 0) {
+        console.log('📋 Excel字段列表:', Object.keys(row));
+      }
+
       // 标准化字段名 - 匹配数据库实际字段
       const investmentData = {
         company_name: row['公司名称'] || row['company_name'] || row['Company Name'] || row['企业名称'] || '',
         company_description: row['公司简介'] || row['description'] || row['Description'] || row['公司介绍'] || '',
-        industry: row['行业'] || row['industry'] || row['Industry'] || row['行业领域'] || '其他',
-        funding_round: row['轮次'] || row['round'] || row['Round'] || row['融资轮次'] || '',
-        investment_institution: row['投资机构'] || row['investors'] || row['Investors'] || row['投资方'] || '',
-        date: row['日期'] || row['date'] || row['Date'] || row['投资日期'] || '',
+        industry: row['行业赛道'] || row['行业'] || row['industry'] || row['Industry'] || row['行业领域'] || '其他',
+        funding_round: row['融资轮次'] || row['轮次'] || row['round'] || row['Round'] || '',
+        investment_institution: row['投资机构'] || row['投资方'] || row['investors'] || row['Investors'] || '',
+        date: row['日期'] || row['投资日期'] || row['date'] || row['Date'] || '',
         // 这些字段在当前数据库表中不存在，暂时注释掉
         // amount: row['金额'] || row['amount'] || row['Amount'] || row['融资金额'] || '',
         // currency: row['货币'] || row['currency'] || row['Currency'] || 'CNY',
@@ -528,9 +558,43 @@ router.post('/import/investments', authenticateToken, requireAdmin, upload.singl
         // location: row['地区'] || row['location'] || row['Location'] || row['所在地'] || ''
       };
 
+      // 调试：输出前3行的字段映射情况
+      if (index < 3) {
+        console.log(`📝 第${rowIndex}行数据映射:`, {
+          原始行业字段: {
+            '行业赛道': row['行业赛道'],
+            '行业': row['行业'],
+            'industry': row['industry'],
+            'Industry': row['Industry'],
+            '行业领域': row['行业领域']
+          },
+          最终行业值: investmentData.industry,
+          原始融资轮次字段: {
+            '融资轮次': row['融资轮次'],
+            '轮次': row['轮次'],
+            'round': row['round'],
+            'Round': row['Round']
+          },
+          最终轮次值: investmentData.funding_round,
+          原始日期字段: {
+            '日期': row['日期'],
+            '投资日期': row['投资日期'],
+            'date': row['date'],
+            'Date': row['Date']
+          },
+          原始日期值: investmentData.date,
+          日期类型: typeof investmentData.date
+        });
+      }
+
       // 数据清理和格式化
       investmentData.company_name = String(investmentData.company_name).trim();
-      investmentData.industry = String(investmentData.industry).trim();
+      investmentData.industry = String(investmentData.industry || '其他').trim();
+      
+      // 确保行业字段不为空
+      if (!investmentData.industry || investmentData.industry === 'undefined' || investmentData.industry === 'null') {
+        investmentData.industry = '其他';
+      }
       
       // 处理金额格式
       if (investmentData.amount) {
@@ -540,13 +604,53 @@ router.post('/import/investments', authenticateToken, requireAdmin, upload.singl
       // 处理日期格式
       if (investmentData.date) {
         try {
-          // 尝试解析Excel日期
-          const date = new Date(investmentData.date);
-          if (!isNaN(date.getTime())) {
-            investmentData.date = date.toISOString().split('T')[0];
+          let parsedDate;
+          
+          // 检查是否是Excel序列号格式（数字）
+          if (typeof investmentData.date === 'number') {
+            // Excel日期序列号转换（从1900-01-01开始计算）
+            const excelEpoch = new Date(1900, 0, 1);
+            parsedDate = new Date(excelEpoch.getTime() + (investmentData.date - 2) * 24 * 60 * 60 * 1000);
+          } else {
+            // 尝试解析字符串格式的日期
+            const dateStr = String(investmentData.date).trim();
+            
+            // 处理常见的日期格式
+            if (dateStr.includes('/')) {
+              // 格式如 2025/7/21 或 2025/07/21
+              const parts = dateStr.split('/');
+              if (parts.length === 3) {
+                const year = parseInt(parts[0]);
+                const month = parseInt(parts[1]) - 1; // 月份从0开始
+                const day = parseInt(parts[2]);
+                parsedDate = new Date(year, month, day);
+              }
+            } else if (dateStr.includes('-')) {
+              // 格式如 2025-07-21
+              parsedDate = new Date(dateStr);
+            } else {
+              // 其他格式尝试直接解析
+              parsedDate = new Date(dateStr);
+            }
+          }
+          
+          // 验证日期有效性并格式化
+          if (parsedDate && !isNaN(parsedDate.getTime())) {
+            // 确保日期在合理范围内（1990-2050）
+            const year = parsedDate.getFullYear();
+            if (year >= 1990 && year <= 2050) {
+              investmentData.date = parsedDate.toISOString().split('T')[0];
+            } else {
+              console.warn(`第${rowIndex}行日期年份超出范围 (${year}):`, investmentData.date);
+              investmentData.date = '';
+            }
+          } else {
+            console.warn(`第${rowIndex}行日期格式无法识别:`, investmentData.date);
+            investmentData.date = '';
           }
         } catch (e) {
-          console.warn(`第${rowIndex}行日期格式无法识别:`, investmentData.date);
+          console.warn(`第${rowIndex}行日期解析错误:`, investmentData.date, e.message);
+          investmentData.date = '';
         }
       }
 
@@ -718,7 +822,7 @@ router.post('/import/investments', authenticateToken, requireAdmin, upload.singl
 });
 
 // Excel导入用户数据
-router.post('/import/users', authenticateToken, requireAdmin, upload.single('excelFile'), (req, res) => {
+router.post('/import/users', authenticateToken, requireAdmin, upload.single('excelFile'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: '请选择Excel文件' });
   }
@@ -728,10 +832,36 @@ router.post('/import/users', authenticateToken, requireAdmin, upload.single('exc
 
   try {
     // 读取Excel文件
-    const workbook = XLSX.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const rawData = XLSX.utils.sheet_to_json(worksheet);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    const worksheet = workbook.worksheets[0];
+    
+    // 将工作表转换为JSON数据
+    const rawData = [];
+    const headerRow = worksheet.getRow(1);
+    const headers = [];
+    
+    // 获取表头
+    headerRow.eachCell((cell, colNumber) => {
+      headers[colNumber] = cell.value;
+    });
+    
+    // 读取数据行
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // 跳过表头
+      
+      const rowData = {};
+      row.eachCell((cell, colNumber) => {
+        if (headers[colNumber]) {
+          rowData[headers[colNumber]] = cell.value;
+        }
+      });
+      
+      // 只添加非空行
+      if (Object.keys(rowData).length > 0) {
+        rawData.push(rowData);
+      }
+    });
 
     console.log(`📊 Excel文件包含 ${rawData.length} 行用户数据`);
 
@@ -822,7 +952,7 @@ router.post('/import/users', authenticateToken, requireAdmin, upload.single('exc
 });
 
 // 下载Excel模板
-router.get('/download/template/:type', authenticateToken, requireAdmin, (req, res) => {
+router.get('/download/template/:type', authenticateToken, requireAdmin, async (req, res) => {
   const { type } = req.params;
   
   try {
@@ -835,9 +965,9 @@ router.get('/download/template/:type', authenticateToken, requireAdmin, (req, re
         {
           '公司名称': '示例科技有限公司',
           '公司简介': '专注于企业级SaaS服务',
-          '轮次': 'A轮',
-          '日期': '2024-01-15',
-          '行业': '企业服务',
+          '融资轮次': 'A轮',
+          '日期': '2025/1/15',
+          '行业赛道': '企业服务',
           '投资机构': '某某资本'
         }
       ];
@@ -860,20 +990,39 @@ router.get('/download/template/:type', authenticateToken, requireAdmin, (req, re
     }
 
     // 创建工作簿和工作表
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(templateData);
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('数据模板');
     
-    // 设置列宽
-    const colWidths = [];
-    Object.keys(templateData[0]).forEach(() => {
-      colWidths.push({ wch: 20 });
+    // 获取列标题
+    const headers = Object.keys(templateData[0]);
+    
+    // 添加表头
+    worksheet.addRow(headers);
+    
+    // 添加示例数据
+    templateData.forEach(data => {
+      const row = headers.map(header => data[header]);
+      worksheet.addRow(row);
     });
-    ws['!cols'] = colWidths;
-
-    XLSX.utils.book_append_sheet(wb, ws, '数据模板');
+    
+    // 设置列宽和样式
+    worksheet.columns = headers.map(header => ({
+      header: header,
+      key: header,
+      width: 20
+    }));
+    
+    // 设置表头样式
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
 
     // 生成Excel文件
-    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    const buffer = await workbook.xlsx.writeBuffer();
 
     res.set({
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

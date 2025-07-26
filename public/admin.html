@@ -966,6 +966,71 @@
     let currentInvitePage = 1;
     let currentUserPage = 1;
 
+    // 显示警告消息函数
+    function showAlert(type, message) {
+      const container = document.getElementById('alertContainer') || createAlertContainer();
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.textContent = message;
+      alert.style.cssText = `
+        padding: 12px 20px;
+        margin: 10px 0;
+        border-radius: 4px;
+        position: relative;
+        font-size: 14px;
+        line-height: 1.4;
+        max-width: 600px;
+        word-wrap: break-word;
+        white-space: pre-line;
+      `;
+      
+      // 根据类型设置不同的样式
+      if (type === 'success') {
+        alert.style.backgroundColor = '#d4edda';
+        alert.style.color = '#155724';
+        alert.style.border = '1px solid #c3e6cb';
+      } else if (type === 'error') {
+        alert.style.backgroundColor = '#f8d7da';
+        alert.style.color = '#721c24';
+        alert.style.border = '1px solid #f5c6cb';
+      } else if (type === 'info') {
+        alert.style.backgroundColor = '#d1ecf1';
+        alert.style.color = '#0c5460';
+        alert.style.border = '1px solid #bee5eb';
+      } else if (type === 'warning') {
+        alert.style.backgroundColor = '#fff3cd';
+        alert.style.color = '#856404';
+        alert.style.border = '1px solid #ffeaa7';
+      }
+      
+      container.appendChild(alert);
+      
+      // 3秒后自动移除
+      setTimeout(() => {
+        if (alert.parentNode) {
+          alert.parentNode.removeChild(alert);
+        }
+      }, 3000);
+    }
+
+    // 创建警告容器
+    function createAlertContainer() {
+      let container = document.getElementById('alertContainer');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'alertContainer';
+        container.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          z-index: 9999;
+          max-width: 400px;
+        `;
+        document.body.appendChild(container);
+      }
+      return container;
+    }
+
     // 检查管理员权限
     async function checkAdminAuth() {
       const token = localStorage.getItem('authToken');
@@ -1960,7 +2025,7 @@
 
     // 编辑投资记录
     function editInvestmentRecord(id) {
-      showMessage(`编辑投资记录功能开发中，记录ID: ${id}`, 'info');
+      showAlert('info', `编辑投资记录功能开发中，记录ID: ${id}`);
       // TODO: 实现编辑功能
     }
 
@@ -1979,7 +2044,7 @@
         const data = await response.json();
         
         if (response.ok) {
-          showMessage('投资记录删除成功', 'success');
+          showAlert('success', '投资记录删除成功');
           // 重新加载当前页数据
           const currentIndustry = document.getElementById('filter-investment-industry')?.value || '';
           const currentSearch = document.getElementById('search-company')?.value || '';
@@ -1988,11 +2053,11 @@
           // 刷新统计数据
           loadStats();
         } else {
-          showMessage(`删除失败: ${data.error || '未知错误'}`, 'error');
+          showAlert('error', `删除失败: ${data.error || '未知错误'}`);
         }
       } catch (error) {
         console.error('删除投资记录失败:', error);
-        showMessage('网络错误，删除失败', 'error');
+        showAlert('error', '网络错误，删除失败');
       }
     }
 
@@ -2081,7 +2146,7 @@
       }
       
       try {
-        showMessage('正在清空数据，请稍候...', 'info');
+        showAlert('info', '正在清空数据，请稍候...');
         
         const response = await fetch('/api/admin/clear-all-data', {
           method: 'DELETE',
@@ -2097,19 +2162,19 @@
         const data = await response.json();
         
         if (response.ok) {
-          showMessage(`✅ ${data.message}\n操作时间: ${new Date(data.timestamp).toLocaleString()}\n操作员: ${data.operator}`, 'success');
+          showAlert('success', `✅ ${data.message}\n操作时间: ${new Date(data.timestamp).toLocaleString()}\n操作员: ${data.operator}`);
           
           // 刷新数据显示
           loadStats();
           loadInvestmentDataForAdmin(); // 刷新投资数据显示
           
         } else {
-          showMessage(`❌ 清空失败: ${data.error || '未知错误'}`, 'error');
+          showAlert('error', `❌ 清空失败: ${data.error || '未知错误'}`);
         }
         
       } catch (error) {
         console.error('清空数据失败:', error);
-        showMessage('❌ 网络错误，清空操作失败', 'error');
+        showAlert('error', '❌ 网络错误，清空操作失败');
       }
     }
 
@@ -2129,5 +2194,6 @@
       }
     }
   </script>
+  <script src="admin.js"></script>
 </body>
 </html> 

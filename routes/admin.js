@@ -8,10 +8,25 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 
+// 确保 uploads 目录存在
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('✅ 创建 uploads 目录:', uploadsDir);
+}
+
 // 配置multer用于文件上传
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/')
+    // 使用绝对路径并确保目录存在
+    const uploadPath = path.join(__dirname, '..', 'uploads');
+    
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+      console.log('✅ 创建 uploads 目录:', uploadPath);
+    }
+    
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
     // 生成唯一文件名：时间戳 + 原文件名

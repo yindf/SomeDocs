@@ -28,6 +28,7 @@
             <span>欢迎，<span id="username"></span></span>
             <span id="role-badge" class="role-badge"></span>
             <span id="industry-badge" class="industry-badge"></span>
+            <a href="#" onclick="showProfileModal()" class="profile-link">个人中心</a>
           </div>
           <div id="expire-warning" class="expire-warning" style="display: none;"></div>
         </div>
@@ -178,6 +179,121 @@
     </div>
   </div>
 
+    <!-- 个人中心对话框 -->
+  <div id="profileModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>个人中心 - 修改密码</h3>
+        <span class="close" onclick="closeModal('profileModal')">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="change-password-form">
+          <div class="form-group">
+            <label for="current-password">当前密码</label>
+            <input type="password" id="current-password" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-password">新密码</label>
+            <input type="password" id="new-password" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="confirm-password">确认新密码</label>
+            <input type="password" id="confirm-password" required>
+          </div>
+          
+          <div id="profile-alert-container" class="alert hidden"></div>
+          
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary">修改密码</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal('profileModal')">取消</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
+  <script>
+    // 显示个人中心模态框
+    function showProfileModal() {
+      document.getElementById('profileModal').style.display = 'block';
+      document.getElementById('change-password-form').reset();
+      hideProfileAlert();
+    }
+    
+    // 隐藏个人中心提示信息
+    function hideProfileAlert() {
+      const alertContainer = document.getElementById('profile-alert-container');
+      alertContainer.classList.add('hidden');
+    }
+    
+    // 显示个人中心提示信息
+    function showProfileAlert(message, type) {
+      const alertContainer = document.getElementById('profile-alert-container');
+      alertContainer.className = `alert alert-${type}`;
+      alertContainer.textContent = message;
+      alertContainer.classList.remove('hidden');
+      
+      // 3秒后自动隐藏
+      setTimeout(() => {
+        alertContainer.classList.add('hidden');
+      }, 3000);
+    }
+    
+    // 修改密码功能
+    document.getElementById('change-password-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const currentPassword = document.getElementById('current-password').value;
+      const newPassword = document.getElementById('new-password').value;
+      const confirmPassword = document.getElementById('confirm-password').value;
+      
+      // 前端验证
+      if (newPassword.length < 6) {
+        showProfileAlert('新密码长度至少6位', 'error');
+        return;
+      }
+      
+      if (newPassword !== confirmPassword) {
+        showProfileAlert('两次输入的密码不一致', 'error');
+        return;
+      }
+      
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          showProfileAlert('请重新登录', 'error');
+          return;
+        }
+        
+        const response = await fetch('/api/users/change-password', {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            currentPassword,
+            newPassword
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showProfileAlert('密码修改成功', 'success');
+          // 清空表单
+          document.getElementById('change-password-form').reset();
+        } else {
+          showProfileAlert(data.error || '密码修改失败', 'error');
+        }
+      } catch (error) {
+        console.error('修改密码失败:', error);
+        showProfileAlert('网络错误，密码修改失败', 'error');
+      }
+    });
+  </script>
 </body>
 </html>

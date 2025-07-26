@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../database');
 const bcrypt = require('bcrypt');
-const { generateToken } = require('../middleware/auth');
+const { generateToken, authenticateToken } = require('../middleware/auth');
 
 // 用户注册
 router.post('/register', (req, res) => {
@@ -161,6 +161,62 @@ router.get('/profile', (req, res) => {
 
   // 这里可以添加token验证逻辑
   res.json({ message: '获取用户信息功能待完善' });
+});
+
+// 修改密码 (需要token)
+router.put('/change-password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: '当前密码和新密码都是必填的' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: '新密码长度至少6位' });
+  }
+
+  try {
+    // 获取当前用户信息
+    const user = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM users WHERE id = ?', [userId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    // 验证当前密码
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ error: '当前密码不正确' });
+    }
+
+    // 检查新密码是否与旧密码相同
+    const isNewPasswordSame = await bcrypt.compare(newPassword, user.password);
+    if (isNewPasswordSame) {
+      return res.status(400).json({ error: '新密码不能与当前密码相同' });
+    }
+
+    // 加密新密码
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 更新密码
+    await new Promise((resolve, reject) => {
+      db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    res.json({ message: '密码修改成功' });
+  } catch (error) {
+    console.error('修改密码错误:', error);
+    res.status(500).json({ error: '服务器内部错误' });
+  }
 });
 
 module.exports = router;

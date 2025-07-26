@@ -905,6 +905,18 @@ window.closeModal = function(modalId) {
   }
 };
 
+// 关闭个人中心模态框
+window.closeProfileModal = function() {
+  console.log('关闭个人中心模态框');
+  const modal = document.getElementById('profileModal');
+  if (modal) {
+    modal.style.display = 'none';
+    console.log('个人中心模态框已关闭');
+  } else {
+    console.error('找不到个人中心模态框元素');
+  }
+};
+
 window.editRecord = function(id) {
   alert(`编辑记录 ID: ${id} 的功能正在开发中`);
 };
@@ -1162,3 +1174,42 @@ window.deleteRecord = function(id) {
 };
 
 console.log('app.js 加载完成');
+
+
+// 处理个人页面加载
+window.loadProfilePage = function() {
+  console.log('加载个人页面');
+  
+  // 检查用户是否已登录
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    console.log('用户未登录，跳转到登录页面');
+    window.showSection('login');
+    return;
+  }
+  
+  // 验证用户信息
+  try {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+    if (!userInfo) {
+      console.log('用户信息不存在，跳转到登录页面');
+      window.showSection('login');
+      return;
+    }
+    
+    console.log('用户已登录:', userInfo.username);
+    
+    // 如果是管理员用户，可以考虑添加特殊处理
+    if (userInfo.role === 'admin') {
+      console.log('管理员用户访问个人页面');
+    }
+    
+    // 可以在这里添加其他个人页面特定的逻辑
+    
+  } catch (e) {
+    console.error('解析用户信息失败:', e);
+    localStorage.removeItem('userInfo');
+    localStorage.removeItem('authToken');
+    window.showSection('login');
+  }
+};

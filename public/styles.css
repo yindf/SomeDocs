@@ -736,3 +736,23 @@ footer {
   }
 }
 
+/* 个人中心链接样式 */
+.profile-link {
+  color: #4a6ea9;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 15px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 0.9rem;
+  border: 1px solid #4a6ea9;
+  background: rgba(74, 110, 169, 0.1);
+}
+
+.profile-link:hover {
+  background: linear-gradient(135deg, #4a6ea9, #667eea);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(74, 110, 169, 0.3);
+}
+

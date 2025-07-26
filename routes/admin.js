@@ -408,26 +408,85 @@ router.put('/invite-codes/:id', authenticateToken, requireAdmin, (req, res) => {
   });
 });
 
-// 获取可用行业列表
+// 获取可用行业列表 - 仅从投资数据中获取
 router.get('/industries', authenticateToken, requireAdmin, (req, res) => {
-  db.all('SELECT DISTINCT industry FROM investments WHERE industry IS NOT NULL AND industry != "" ORDER BY industry', (err, rows) => {
+  // 只从投资数据中获取实际存在的行业赛道
+  db.all(`
+    SELECT DISTINCT industry 
+    FROM investments 
+    WHERE industry IS NOT NULL 
+      AND industry != "" 
+      AND industry != "其他" 
+    ORDER BY industry
+  `, (err, rows) => {
     if (err) {
-      return res.status(500).json({ error: err.message });
+      console.error('获取行业列表失败:', err);
+      return res.status(500).json({ error: '获取行业列表失败: ' + err.message });
     }
 
     const industries = rows.map(row => row.industry);
     
-    // 添加一些预设的行业选项
-    const predefinedIndustries = [
-      '人工智能', '生物医药', '新能源', '电子商务', 'SaaS软件',
-      '金融科技', '教育科技', '汽车交通', '企业服务', '消费品',
-      '医疗健康', '文娱传媒', '房产服务', '物流供应链', '硬件制造'
-    ];
-
-    // 合并并去重
-    const allIndustries = Array.from(new Set([...predefinedIndustries, ...industries]));
+    // 添加统计信息到日志
+    console.log(`📊 从投资数据中获取到 ${industries.length} 个不同的行业赛道:`, industries);
     
-    res.json(allIndustries);
+    // 如果没有数据，返回一个默认的"其他"选项
+    if (industries.length === 0) {
+      console.log('⚠️ 投资数据中没有找到行业信息，返回默认选项');
+      return res.json(['其他']);
+    }
+    
+    res.json(industries);
+  });
+});
+
+// 清理行业数据 - 将不在投资数据中的激活码行业设置为"其他"
+router.post('/cleanup-industries', authenticateToken, requireAdmin, (req, res) => {
+  console.log('🧹 开始清理行业数据...');
+  
+  // 首先获取投资数据中的所有行业
+  db.all(`
+    SELECT DISTINCT industry 
+    FROM investments 
+    WHERE industry IS NOT NULL 
+      AND industry != "" 
+      AND industry != "其他"
+  `, (err, investmentIndustries) => {
+    if (err) {
+      console.error('获取投资行业失败:', err);
+      return res.status(500).json({ error: '获取投资行业失败' });
+    }
+    
+    const validIndustries = investmentIndustries.map(row => row.industry);
+    console.log('✅ 投资数据中的有效行业:', validIndustries);
+    
+    if (validIndustries.length === 0) {
+      return res.json({ message: '投资数据中没有有效行业，无需清理' });
+    }
+    
+    // 构建SQL查询，将不在投资数据中的激活码行业设置为"其他"
+    const placeholders = validIndustries.map(() => '?').join(',');
+    const updateQuery = `
+      UPDATE invite_codes 
+      SET industry = '其他' 
+      WHERE industry NOT IN (${placeholders}) 
+        AND industry != '其他'
+    `;
+    
+    db.run(updateQuery, validIndustries, function(err) {
+      if (err) {
+        console.error('清理激活码行业失败:', err);
+        return res.status(500).json({ error: '清理失败' });
+      }
+      
+      console.log(`✅ 已清理 ${this.changes} 个激活码的行业数据`);
+      
+      res.json({
+        message: '行业数据清理完成',
+        validIndustries: validIndustries,
+        updatedCount: this.changes,
+        timestamp: new Date().toISOString()
+      });
+    });
   });
 });
 
@@ -544,6 +603,16 @@ router.post('/import/investments', authenticateToken, requireAdmin, upload.singl
     const validData = [];
     const errors = [];
     
+    // 记录OMOWAY相关的原始数据用于调试
+    const omowayRawData = rawData.filter(row => {
+      const companyName = row['公司名称'] || row['company_name'] || row['Company Name'] || row['企业名称'] || '';
+      return companyName && companyName.toString().includes('OMOWAY');
+    });
+    
+    if (omowayRawData.length > 0) {
+      console.log('🔍 发现OMOWAY原始数据:', omowayRawData);
+    }
+    
     rawData.forEach((row, index) => {
       const rowIndex = index + 2; // Excel行号(从2开始，因为第1行是标题)
       
@@ -553,10 +622,7 @@ router.post('/import/investments', authenticateToken, requireAdmin, upload.singl
         return;
       }
 
-      // 调试：输出第一行的所有字段名
-      if (index === 0) {
-        console.log('📋 Excel字段列表:', Object.keys(row));
-      }
+      // Excel字段处理
 
       // 标准化字段名 - 匹配数据库实际字段
       const investmentData = {
@@ -573,47 +639,48 @@ router.post('/import/investments', authenticateToken, requireAdmin, upload.singl
         // location: row['地区'] || row['location'] || row['Location'] || row['所在地'] || ''
       };
 
-      // 调试：输出前3行的字段映射情况
-      if (index < 3) {
-        console.log(`📝 第${rowIndex}行数据映射:`, {
-          原始行业字段: {
-            '行业赛道': row['行业赛道'],
-            '行业': row['行业'],
-            'industry': row['industry'],
-            'Industry': row['Industry'],
-            '行业领域': row['行业领域']
-          },
-          最终行业值: investmentData.industry,
-          原始融资轮次字段: {
-            '融资轮次': row['融资轮次'],
-            '轮次': row['轮次'],
-            'round': row['round'],
-            'Round': row['Round']
-          },
-          最终轮次值: investmentData.funding_round,
-          原始日期字段: {
-            '日期': row['日期'],
-            '投资日期': row['投资日期'],
-            'date': row['date'],
-            'Date': row['Date']
-          },
-          原始日期值: investmentData.date,
-          日期类型: typeof investmentData.date
-        });
-      }
+      // 字段映射完成
 
-      // 数据清理和格式化
-      investmentData.company_name = String(investmentData.company_name).trim();
-      investmentData.industry = String(investmentData.industry || '其他').trim();
+      // 数据清理和格式化 - 安全处理对象类型
+      // 安全转换为字符串，避免 [object Object] 问题
+      const safeStringify = (value) => {
+          if (value === null || value === undefined) {
+            return '';
+          }
+          if (Array.isArray(value)) {
+            return value.join(', ');
+          }
+          // 处理richText格式
+          if (value && typeof value === 'object' && value.richText && Array.isArray(value.richText)) {
+            return value.richText.map(item => {
+              if (item && typeof item === 'object' && item.text) {
+                return item.text;
+              }
+              return String(item);
+            }).join('');
+          }
+          // 对于其他对象，尝试获取其字符串表示或返回空
+          if (typeof value === 'object') {
+            return value.toString && value.toString() !== '[object Object]' ? value.toString() : '';
+          }
+          return String(value);
+        };
+      
+      investmentData.company_name = safeStringify(investmentData.company_name).trim();
+      investmentData.company_description = safeStringify(investmentData.company_description).trim();
+      investmentData.industry = safeStringify(investmentData.industry || '其他').trim();
+      investmentData.funding_round = safeStringify(investmentData.funding_round).trim();
+      investmentData.investment_institution = safeStringify(investmentData.investment_institution).trim();
       
       // 确保行业字段不为空
-      if (!investmentData.industry || investmentData.industry === 'undefined' || investmentData.industry === 'null') {
+      if (!investmentData.industry || investmentData.industry === 'undefined' || investmentData.industry === 'null' || investmentData.industry === '[object Object]') {
         investmentData.industry = '其他';
       }
       
       // 处理金额格式
       if (investmentData.amount) {
-        investmentData.amount = String(investmentData.amount).replace(/[^\d.万千百亿KMBT]/g, '');
+        const amountStr = safeStringify(investmentData.amount);
+        investmentData.amount = amountStr.replace(/[^\d.万千百亿KMBT]/g, '');
       }
 
       // 处理日期格式
@@ -627,8 +694,14 @@ router.post('/import/investments', authenticateToken, requireAdmin, upload.singl
             const excelEpoch = new Date(1900, 0, 1);
             parsedDate = new Date(excelEpoch.getTime() + (investmentData.date - 2) * 24 * 60 * 60 * 1000);
           } else {
-            // 尝试解析字符串格式的日期
-            const dateStr = String(investmentData.date).trim();
+            // 尝试解析字符串格式的日期 - 使用安全转换
+            const dateStr = safeStringify(investmentData.date).trim();
+            
+            // 如果是 [object Object]，跳过处理
+            if (dateStr === '[object Object]' || dateStr === '') {
+              investmentData.date = '';
+              return;
+            }
             
             // 处理常见的日期格式
             if (dateStr.includes('/')) {
@@ -911,9 +984,12 @@ router.post('/import/users', authenticateToken, requireAdmin, upload.single('exc
         expire_date: row['过期时间'] || row['expire_date'] || row['Expire Date'] || null
       };
 
-      // 数据验证和清理
-      userData.username = String(userData.username).trim();
-      userData.email = String(userData.email).trim().toLowerCase();
+      // 数据验证和清理 - 使用安全字符串转换
+      userData.username = safeStringify(userData.username).trim();
+      userData.email = safeStringify(userData.email).trim().toLowerCase();
+      userData.password = safeStringify(userData.password).trim();
+      userData.industry = safeStringify(userData.industry).trim();
+      userData.role = safeStringify(userData.role).trim().toLowerCase();
       
       // 验证邮箱格式
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -923,7 +999,7 @@ router.post('/import/users', authenticateToken, requireAdmin, upload.single('exc
       }
 
       // 验证角色
-      if (!['user', 'admin'].includes(userData.role)) {
+      if (!['user', 'admin'].includes(userData.role) || userData.role === '[object Object]') {
         userData.role = 'user';
       }
 
@@ -1106,3 +1182,47 @@ router.delete('/clear-all-data', authenticateToken, requireAdmin, (req, res) => 
 });
 
 module.exports = router;
+// 修改用户密码 (管理员权限)
+router.put('/users/:id/change-password', authenticateToken, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { newPassword } = req.body;
+  const bcrypt = require('bcrypt');
+
+  if (!newPassword) {
+    return res.status(400).json({ error: '新密码是必填的' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: '新密码长度至少6位' });
+  }
+
+  try {
+    // 检查用户是否存在
+    const user = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM users WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    // 加密新密码
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 更新密码
+    await new Promise((resolve, reject) => {
+      db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, id], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    res.json({ message: '用户密码修改成功' });
+  } catch (error) {
+    console.error('管理员修改用户密码错误:', error);
+    res.status(500).json({ error: '服务器内部错误' });
+  }
+});
